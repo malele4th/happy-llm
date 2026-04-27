@@ -1,0 +1,144 @@
+{
+  "id": "2026-04-27-115415",
+  "generated_at": "2026-04-27T03:54:15.463796Z",
+  "language": "zh",
+  "pages": [
+    {
+      "slug": "1-xiang-mu-gai-shu-tiny-k-yu-yan-mo-xing-xun-lian-kuang-jia",
+      "title": "项目概述：Tiny-K 语言模型训练框架",
+      "file": "1-xiang-mu-gai-shu-tiny-k-yu-yan-mo-xing-xun-lian-kuang-jia.md",
+      "section": "入门指南",
+      "level": "Beginner"
+    },
+    {
+      "slug": "2-kuai-su-qi-dong-jian-yun-xing-yu-xun-lian-yu-wei-diao",
+      "title": "快速启动：一键运行预训练与微调",
+      "file": "2-kuai-su-qi-dong-jian-yun-xing-yu-xun-lian-yu-wei-diao.md",
+      "section": "入门指南",
+      "level": "Beginner"
+    },
+    {
+      "slug": "3-huan-jing-pei-zhi-yu-yi-lai-an-zhuang",
+      "title": "环境配置与依赖安装",
+      "file": "3-huan-jing-pei-zhi-yu-yi-lai-an-zhuang.md",
+      "section": "入门指南",
+      "level": "Beginner"
+    },
+    {
+      "slug": "4-transformer-jia-gou-xiang-jie-he-xin-zu-jian-yu-she-ji-yuan-li",
+      "title": "Transformer 架构详解：核心组件与设计原理",
+      "file": "4-transformer-jia-gou-xiang-jie-he-xin-zu-jian-yu-she-ji-yuan-li.md",
+      "section": "深度探索",
+      "group": "模型架构",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "5-xuan-zhuan-wei-zhi-bian-ma-rope-yuan-li-yu-shi-xian",
+      "title": "旋转位置编码（RoPE）：原理与实现",
+      "file": "5-xuan-zhuan-wei-zhi-bian-ma-rope-yuan-li-yu-shi-xian.md",
+      "section": "深度探索",
+      "group": "模型架构",
+      "level": "Advanced"
+    },
+    {
+      "slug": "6-fen-zu-cha-xun-zhu-yi-li-ji-zhi-gqa-gao-xiao-zhu-yi-li-ji-suan",
+      "title": "分组查询注意力机制（GQA）：高效注意力计算",
+      "file": "6-fen-zu-cha-xun-zhu-yi-li-ji-zhi-gqa-gao-xiao-zhu-yi-li-ji-suan.md",
+      "section": "深度探索",
+      "group": "模型架构",
+      "level": "Advanced"
+    },
+    {
+      "slug": "7-rmsnorm-yu-swiglu-gui-hua-yu-ji-huo-han-shu",
+      "title": "RMSNorm 与 SwiGLU：归一化与激活函数",
+      "file": "7-rmsnorm-yu-swiglu-gui-hua-yu-ji-huo-han-shu.md",
+      "section": "深度探索",
+      "group": "模型架构",
+      "level": "Advanced"
+    },
+    {
+      "slug": "8-yu-xun-lian-liu-cheng-shu-ju-jia-zai-yu-mo-xing-xun-lian",
+      "title": "预训练流程：数据加载与模型训练",
+      "file": "8-yu-xun-lian-liu-cheng-shu-ju-jia-zai-yu-mo-xing-xun-lian.md",
+      "section": "深度探索",
+      "group": "训练流程",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "9-jian-du-wei-diao-sft-dui-hua-neng-li-xun-lian",
+      "title": "监督微调（SFT）：对话能力训练",
+      "file": "9-jian-du-wei-diao-sft-dui-hua-neng-li-xun-lian.md",
+      "section": "深度探索",
+      "group": "训练流程",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "10-xue-xi-lu-diao-du-warmup-yu-yu-xian-tui-huo-ce-lue",
+      "title": "学习率调度：Warmup 与余弦退火策略",
+      "file": "10-xue-xi-lu-diao-du-warmup-yu-yu-xian-tui-huo-ce-lue.md",
+      "section": "深度探索",
+      "group": "训练流程",
+      "level": "Advanced"
+    },
+    {
+      "slug": "11-hun-he-jing-du-xun-lian-yu-ti-du-lei-ji",
+      "title": "混合精度训练与梯度累积",
+      "file": "11-hun-he-jing-du-xun-lian-yu-ti-du-lei-ji.md",
+      "section": "深度探索",
+      "group": "训练流程",
+      "level": "Advanced"
+    },
+    {
+      "slug": "12-zi-ding-yi-fen-ci-qi-xun-lian-bpe-suan-fa-shi-zhan",
+      "title": "自定义分词器训练：BPE 算法实战",
+      "file": "12-zi-ding-yi-fen-ci-qi-xun-lian-bpe-suan-fa-shi-zhan.md",
+      "section": "深度探索",
+      "group": "数据处理",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "13-shu-ju-ji-chu-li-jsonl-ge-shi-zhuan-huan-yu-fen-kuai",
+      "title": "数据集处理：JSONL 格式转换与分块",
+      "file": "13-shu-ju-ji-chu-li-jsonl-ge-shi-zhuan-huan-yu-fen-kuai.md",
+      "section": "深度探索",
+      "group": "数据处理",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "14-shu-ju-ji-xia-zai-yu-pei-zhi",
+      "title": "数据集下载与配置",
+      "file": "14-shu-ju-ji-xia-zai-yu-pei-zhi.md",
+      "section": "深度探索",
+      "group": "数据处理",
+      "level": "Beginner"
+    },
+    {
+      "slug": "15-mo-xing-tui-li-yu-wen-ben-sheng-cheng",
+      "title": "模型推理与文本生成",
+      "file": "15-mo-xing-tui-li-yu-wen-ben-sheng-cheng.md",
+      "section": "实战应用",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "16-mo-xing-dao-chu-yu-bu-shu-huggingface-ge-shi-zhuan-huan",
+      "title": "模型导出与部署：HuggingFace 格式转换",
+      "file": "16-mo-xing-dao-chu-yu-bu-shu-huggingface-ge-shi-zhuan-huan.md",
+      "section": "实战应用",
+      "level": "Intermediate"
+    },
+    {
+      "slug": "17-duo-gpufen-bu-shi-xun-lian-pei-zhi",
+      "title": "多GPU分布式训练配置",
+      "file": "17-duo-gpufen-bu-shi-xun-lian-pei-zhi.md",
+      "section": "实战应用",
+      "level": "Beginner"
+    },
+    {
+      "slug": "18-shi-yan-gen-zong-swanlab-ri-zhi-ji-cheng",
+      "title": "实验跟踪：SwanLab 日志集成",
+      "file": "18-shi-yan-gen-zong-swanlab-ri-zhi-ji-cheng.md",
+      "section": "实战应用",
+      "level": "Beginner"
+    }
+  ]
+}
