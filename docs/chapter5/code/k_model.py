@@ -179,14 +179,15 @@ class Attention(nn.Module):
 
     def forward(self, x: torch.Tensor, freqs_cos: torch.Tensor, freqs_sin: torch.Tensor, attention_mask: Optional[torch.Tensor] = None):
         # 获取批次大小和序列长度，[batch_size, seq_len, dim]
-        bsz, seqlen, _ = x.shape
+        batch_size, seqlen, _ = x.shape
 
+        # 维度符号约定：B=batch_size, H=args.n_heads, H_kv=args.n_kv_heads, L=seqlen, D=head_dim, dim=args.dim
         # 计算查询（Q）、键（K）、值（V）。
         xq, xk, xv = self.wq(x), self.wk(x), self.wv(x)
         # 调整形状以适应头的维度。
-        xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        xk = xk.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        xv = xv.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        xq = xq.view(batch_size, seqlen, self.n_local_heads, self.head_dim)     # [B, L, H, D]
+        xk = xk.view(batch_size, seqlen, self.n_local_kv_heads, self.head_dim)  # [B, L, H_kv, D]
+        xv = xv.view(batch_size, seqlen, self.n_local_kv_heads, self.head_dim)  # [B, L, H_kv, D]
 
         # 应用旋转位置嵌入（RoPE）。
         xq, xk = apply_rotary_emb(xq, xk, freqs_cos, freqs_sin)
@@ -196,12 +197,13 @@ class Attention(nn.Module):
         xv = repeat_kv(xv, self.n_rep)
 
         # 将头作为批次维度处理。
-        xq = xq.transpose(1, 2)
-        xk = xk.transpose(1, 2)
-        xv = xv.transpose(1, 2)
+        xq = xq.transpose(1, 2)  # [B, H, L, D]
+        xk = xk.transpose(1, 2)  # [B, H, L, D]
+        xv = xv.transpose(1, 2)  # [B, H, L, D]
+
         key_padding_mask = None
         if attention_mask is not None:
-            key_padding_mask = attention_mask[:, None, None, :].to(dtype=torch.bool)
+            key_padding_mask = attention_mask[:, None, None, :].to(dtype=torch.bool)  # [B, 1, 1, L]
 
         # 根据是否支持Flash Attention，选择实现方式。
         if self.flash:
@@ -238,11 +240,11 @@ class Attention(nn.Module):
             output = torch.matmul(scores, xv)
 
         # 恢复时间维度并合并头。
-        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        output = output.transpose(1, 2).contiguous().view(batch_size, seqlen, -1)  # [B, L, dim]
 
         # 最终投影回残差流。
-        output = self.wo(output)
-        output = self.resid_dropout(output)
+        output = self.wo(output)  # [B, L, dim]
+        output = self.resid_dropout(output)  # [B, L, dim]
         return output
 
 class MLP(nn.Module):
@@ -382,13 +384,13 @@ class Transformer(PreTrainedModel):
         if attention_mask is None or attention_mask.all():
             return idx, attention_mask
 
-        bsz = idx.size(0)
+        batch_size = idx.size(0)
         lengths = attention_mask.long().sum(dim=1)
         max_len = max(int(lengths.max().item()), 1)
-        packed_idx = idx.new_full((bsz, max_len), pad_token_id)
-        packed_mask = attention_mask.new_zeros((bsz, max_len), dtype=torch.bool)
+        packed_idx = idx.new_full((batch_size, max_len), pad_token_id)
+        packed_mask = attention_mask.new_zeros((batch_size, max_len), dtype=torch.bool)
 
-        for row in range(bsz):
+        for row in range(batch_size):
             valid_len = int(lengths[row].item())
             if valid_len <= 0:
                 continue
@@ -415,7 +417,7 @@ class Transformer(PreTrainedModel):
         attention_mask = self._prepare_attention_mask(kwargs.get('attention_mask'), tokens)
 
         # 前向传播函数
-        _bsz, seqlen = tokens.shape
+        _batch_size, seqlen = tokens.shape
         # 通过词嵌入层和Dropout层
         h = self.tok_embeddings(tokens)
         h = self.dropout(h)
@@ -448,7 +450,7 @@ class Transformer(PreTrainedModel):
             else:
                 full_logits = self.output(h)
                 last_token_pos = attention_mask.long().sum(dim=1).clamp(min=1) - 1
-                logits = full_logits[torch.arange(_bsz, device=tokens.device), last_token_pos].unsqueeze(1)
+                logits = full_logits[torch.arange(_batch_size, device=tokens.device), last_token_pos].unsqueeze(1)
             self.last_loss = None
 
         # 设置输出
@@ -799,3 +801,6 @@ if __name__ == '__main__':
 
     # 将输入张量传入模型
     output = model(X, Y)
+
+    print("output.loss:", output.loss)
+    print("output.logits:", output.logits.shape)
