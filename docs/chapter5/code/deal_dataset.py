@@ -3,12 +3,12 @@ import json
 from tqdm import tqdm
 
 # pretrain_data 为运行download_dataset.sh时，下载的pretrain_data本地路径
-pretrain_data = 'your local pretrain_data'
-output_pretrain_data = 'seq_monkey_datawhale.jsonl'
+pretrain_data = './data/mini_mobvoi_seq_monkey_general_open_corpus.jsonl'
+output_pretrain_data = './data/train/mini_seq_monkey_datawhale.jsonl'
 
 # sft_data 为运行download_dataset.sh时，下载的sft_data本地路径
-sft_data = 'your local sft_data'
-output_sft_data = 'BelleGroup_sft.jsonl'
+sft_data = './data/BelleGroup/mini_train_3.5M_CN.json'
+output_sft_data = './data/train/mini_BelleGroup_sft.jsonl'
 
 # 1 处理预训练数据
 def split_text(text, chunk_size=512):
@@ -47,3 +47,4 @@ with open(output_sft_data, 'a', encoding='utf-8') as sft:
             item = json.loads(item)
             message = convert_message(item['conversations'])
             sft.write(json.dumps(message, ensure_ascii=False) + '\n')
+
