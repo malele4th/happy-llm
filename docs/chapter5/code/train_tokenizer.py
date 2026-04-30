@@ -173,8 +173,8 @@ def eval_tokenizer(tokenizer_path: str) -> None:
 
 def main():
     # 配置路径
-    data_path = "your data path"
-    save_dir = "tokenizer_k"
+    data_path = "./data/train/toy_seq_monkey_datawhale.jsonl"
+    save_dir = "toy_tokenizer_k"
 
     # 训练tokenizer
     train_tokenizer(
