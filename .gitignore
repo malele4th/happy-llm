@@ -164,3 +164,4 @@ cython_debug/
 .claude/
 
 docs/chapter5/code/data/*
+docs/chapter5/code/base_model/*

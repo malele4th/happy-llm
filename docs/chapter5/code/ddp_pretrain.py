@@ -129,7 +129,8 @@ def train_epoch(epoch):
             spend_time = time.time() - start_time
             # 打印训练进度信息
             Logger(
-                'Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} epoch_Time:{}min;'.format(
+                '[{}] Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} epoch_Time:{}min;'.format(
+                    time.ctime(),
                     epoch + 1,
                     args.epochs,
                     step,
@@ -218,11 +219,13 @@ def init_model():
 
 
 if __name__ == "__main__":
+    print(f"{time.ctime()} [all start]")
+
     # ==================== 命令行参数解析 ====================
     parser = argparse.ArgumentParser(description="Tiny-LLM Pretraining")
     
     # 基础训练参数
-    parser.add_argument("--out_dir", type=str, default="base_model_215M", help="模型输出目录")
+    parser.add_argument("--out_dir", type=str, default="base_model", help="模型输出目录")
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=64, help="批次大小")
     parser.add_argument("--learning_rate", type=float, default=2e-4, help="学习率")
@@ -232,7 +235,7 @@ if __name__ == "__main__":
     # 实验跟踪和数据加载参数
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用SwanLab进行实验跟踪")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载的工作进程数")
-    parser.add_argument("--data_path", type=str, default="./seq_monkey_datawhale.jsonl", help="训练数据路径")
+    parser.add_argument("--data_path", type=str, default="./data/train/toy_seq_monkey_datawhale.jsonl", help="训练数据路径")
     
     # 训练优化参数
     parser.add_argument("--accumulation_steps", type=int, default=8, help="梯度累积步数")
@@ -240,8 +243,8 @@ if __name__ == "__main__":
     parser.add_argument("--warmup_iters", type=int, default=0, help="学习率预热迭代次数")
     
     # 日志和保存参数
-    parser.add_argument("--log_interval", type=int, default=100, help="日志记录间隔")
-    parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
+    parser.add_argument("--log_interval", type=int, default=1, help="日志记录间隔")
+    parser.add_argument("--save_interval", type=int, default=100, help="模型保存间隔")
     
     # 多GPU训练参数
     parser.add_argument("--gpus", type=str, default='0,1,2,3,4,5,6,7', help="使用的GPU ID，用逗号分隔 (例如: '0,1,2')")
@@ -259,6 +262,7 @@ if __name__ == "__main__":
             args.device = "cpu"
 
     # ==================== 实验跟踪初始化 ====================
+    print("args.use_swanlab: ", args.use_swanlab)
     if args.use_swanlab:
         # 注意：使用前需要先登录 swanlab.login(api_key='your key')
         run = swanlab.init(
@@ -268,10 +272,14 @@ if __name__ == "__main__":
         )
 
     # ==================== 模型配置 ====================
-    # 定义语言模型的配置参数
+    # 定义语言模型的配置参数 [为了快速训练，这里参数都改小了很多，与作者给的参数不同]
     lm_config = ModelConfig(
-        dim=1024,      # 模型维度
-        n_layers=18,   # Transformer层数
+        dim = 64,      # 模型维度
+        n_layers = 2,   # Transformer层数
+        n_heads = 4, # 注意力机制的头数
+        n_kv_heads = 2, # 键值头的数量
+        multiple_of = 32, 
+        max_seq_len = 128, # 最大序列长度
     )
 
     # ==================== 训练环境设置 ====================
@@ -290,6 +298,8 @@ if __name__ == "__main__":
     # 设置混合精度训练的上下文管理器
     # CPU训练时使用nullcontext，GPU训练时使用autocast
     ctx = nullcontext() if device_type == "cpu" else torch.cuda.amp.autocast()
+
+    print("common init done, args: ", args)
 
     # ==================== 模型和数据初始化 ====================
     # 初始化模型和分词器
@@ -319,7 +329,12 @@ if __name__ == "__main__":
     # ==================== 开始训练 ====================
     # 计算每个epoch的迭代次数
     iter_per_epoch = len(train_loader)
-    
+    print("iter_per_epoch: ", iter_per_epoch)
+
     # 开始训练循环
     for epoch in range(args.epochs):
+        print("epoch: ", epoch)
         train_epoch(epoch)
+
+    print("train done")
+    print(f"{time.ctime()} [all start]")
