@@ -129,7 +129,7 @@ def train_epoch(epoch):
             spend_time = time.time() - start_time
             # 打印训练进度信息
             Logger(
-                '[{}] Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} epoch_Time:{}min;'.format(
+                '[{}] Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} 当前epoch训练时间:{:.2f}min;'.format(
                     time.ctime(),
                     epoch + 1,
                     args.epochs,
@@ -137,7 +137,7 @@ def train_epoch(epoch):
                     iter_per_epoch,
                     loss.item() * args.accumulation_steps,  # 恢复真实的loss值
                     optimizer.param_groups[-1]['lr'],
-                    spend_time / (step + 1) * iter_per_epoch // 60 - spend_time // 60))
+                    spend_time // 60.0))
             
             # 如果启用SwanLab，记录训练指标
             if args.use_swanlab:
@@ -156,7 +156,7 @@ def train_epoch(epoch):
             state_dict = model.module.state_dict() if isinstance(model, torch.nn.DataParallel) else model.state_dict()
             torch.save(state_dict, ckp)
             model.train()  # 切换回训练模式
-        
+
         # 每20000步保存一个带步数标记的检查点
         if (step + 1) % 20000 == 0:
             model.eval()
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     # 训练优化参数
     parser.add_argument("--accumulation_steps", type=int, default=8, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
-    parser.add_argument("--warmup_iters", type=int, default=0, help="学习率预热迭代次数")
+    parser.add_argument("--warmup_iters", type=int, default=100, help="学习率预热迭代次数")
     
     # 日志和保存参数
     parser.add_argument("--log_interval", type=int, default=1, help="日志记录间隔")
