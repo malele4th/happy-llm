@@ -85,14 +85,17 @@ def train_epoch(epoch):
         if step % args.log_interval == 0:
             spend_time = time.time() - start_time
             Logger(
-                'Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} epoch_Time:{}min:'.format(
+                '[{}] Epoch:[{}/{}]({}/{}) loss:{:.3f} lr:{:.7f} 当前epoch训练时间:{:.2f}min:'.format(
+                    time.ctime(),
                     epoch + 1,
                     args.epochs,
                     step,
                     iter_per_epoch,
                     loss.item() * args.accumulation_steps,
                     optimizer.param_groups[-1]['lr'],
-                    spend_time / (step + 1) * iter_per_epoch // 60 - spend_time // 60))
+                    spend_time / 60.0))
+            
+            # 如果启用SwanLab，记录训练指标
             if args.use_swanlab:
                 swanlab.log({
                     "loss": loss.item() * args.accumulation_steps,
@@ -134,7 +137,7 @@ def init_model():
     model = Transformer(lm_config)
 
     # 加载预训练权重
-    ckp = './base_model_215M/pretrain_1024_18_6144.pth'
+    ckp = './base_model/pretrain_64_2_6144.pth'
     state_dict = torch.load(ckp, map_location=args.device)
     unwanted_prefix = '_orig_mod.'
     for k, v in list(state_dict.items()):
@@ -149,26 +152,38 @@ def init_model():
         model = torch.nn.DataParallel(model)
     
     model = model.to(args.device)
+
     Logger(f'LLM总参数量：{count_parameters(model) / 1e6:.3f} 百万')
     return model, tokenizer
 
 
 if __name__ == "__main__":
+    print(f"{time.ctime()} [all start]")
+
     parser = argparse.ArgumentParser(description="Tiny-LLM Pretraining")
-    parser.add_argument("--out_dir", type=str, default="sft_model_215M", help="输出目录")
+
+    # 基础训练参数
+    parser.add_argument("--out_dir", type=str, default="sft_model", help="输出目录")
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=64, help="批处理大小")
     parser.add_argument("--learning_rate", type=float, default=2e-4, help="学习率")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="使用的设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="数据类型")
+
+    # 实验跟踪和数据加载参数
     parser.add_argument("--use_swanlab", action="store_true", help="是否使用SwanLab进行实验跟踪")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载的工作进程数")
-    parser.add_argument("--data_path", type=str, default="./BelleGroup_sft.jsonl", help="训练数据路径")
+    parser.add_argument("--data_path", type=str, default="./data/train/mini_BelleGroup_sft.jsonl", help="训练数据路径")
+
+    # 训练优化参数
     parser.add_argument("--accumulation_steps", type=int, default=8, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--warmup_iters", type=int, default=0, help="预热迭代次数")
-    parser.add_argument("--log_interval", type=int, default=100, help="日志记录间隔")
-    parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
+
+    # 日志和保存参数
+    parser.add_argument("--log_interval", type=int, default=1, help="日志记录间隔")
+    parser.add_argument("--save_interval", type=int, default=100, help="模型保存间隔")
+
     # 添加多卡参数
     parser.add_argument("--gpus", type=str, default='0,1,2,3,4,5,6,7', help="逗号分隔的GPU ID (例如 '0,1,2')")
 
@@ -193,13 +208,25 @@ if __name__ == "__main__":
 
     # 模型配置
     lm_config = ModelConfig(
-        dim=1024,
-        n_layers=18,
+        dim = 64,      # 模型维度
+        n_layers = 2,   # Transformer层数
+        n_heads = 4, # 注意力机制的头数
+        n_kv_heads = 2, # 键值头的数量
+        multiple_of = 32, 
+        max_seq_len = 128, # 最大序列长度
     )
+
+    # 训练环境设置
     max_seq_len = lm_config.max_seq_len
     args.save_dir = os.path.join(args.out_dir)
+
+    # 创建必要的目录
     os.makedirs(args.out_dir, exist_ok=True)
+
+    # 设置随机种子以确保结果可复现
     torch.manual_seed(42)
+
+    # 确定设备类型（用于选择合适的上下文管理器）
     device_type = "cuda" if "cuda" in args.device else "cpu"
 
     # 上下文管理器
@@ -210,6 +237,7 @@ if __name__ == "__main__":
     
     # 创建数据集和数据加载器
     train_ds = SFTDataset(args.data_path, tokenizer, max_length=max_seq_len)
+
     train_loader = DataLoader(
         train_ds,
         batch_size=args.batch_size,
@@ -227,3 +255,6 @@ if __name__ == "__main__":
     iter_per_epoch = len(train_loader)
     for epoch in range(args.epochs):
         train_epoch(epoch)
+
+    print("train done")
+    print(f"{time.ctime()} [all end]")

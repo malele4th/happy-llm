@@ -137,7 +137,7 @@ def train_epoch(epoch):
                     iter_per_epoch,
                     loss.item() * args.accumulation_steps,  # 恢复真实的loss值
                     optimizer.param_groups[-1]['lr'],
-                    spend_time // 60.0))
+                    spend_time / 60.0))
             
             # 如果启用SwanLab，记录训练指标
             if args.use_swanlab:
@@ -337,4 +337,4 @@ if __name__ == "__main__":
         train_epoch(epoch)
 
     print("train done")
-    print(f"{time.ctime()} [all start]")
+    print(f"{time.ctime()} [all end]")

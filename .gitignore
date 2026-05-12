@@ -163,5 +163,7 @@ cython_debug/
 
 .claude/
 
+docs/chapter5/code/logs/*
 docs/chapter5/code/data/*
 docs/chapter5/code/base_model/*
+docs/chapter5/code/sft_model/*
