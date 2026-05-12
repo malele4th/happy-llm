@@ -1,4 +1,5 @@
 import os
+import time
 import pickle
 from contextlib import nullcontext
 import torch
@@ -33,18 +34,22 @@ class TextGenerator:
         # 根据 dtype 选择适当的自动混合精度上下文
         ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[self.dtype]
         self.ctx = nullcontext() if self.device_type == 'cpu' else torch.amp.autocast(device_type=self.device_type, dtype=ptdtype)
+
         # 初始化分词器
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_model_path)  # 根据指定的路径加载分词器
 
         # 加载模型检查点文件
         checkpoint_dict = torch.load(self.checkpoint, map_location=self.device)  # 加载模型参数 # 初始化模型参数
+
+        # 实例化 Transformer 模型
         self.model = Transformer(
             ModelConfig(
                 dim=1024,
                 n_layers=18,
                 pad_token_id=self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else 0
             )
-        )  # 实例化 Transformer 模型
+        )
+
         sunwanted_prefix = '_orig_mod.'
         for k, v in list(checkpoint_dict.items()):
             if k.startswith(sunwanted_prefix):
@@ -54,8 +59,10 @@ class TextGenerator:
         # 计算模型参数量
         num_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Model has {num_params / 1e6:.3f} M parameters.")
+
         # 设置模型为评估模式（evaluation mode），防止训练模式下的 dropout 等操作影响结果
         self.model.eval()
+
         # 将模型放置到正确的设备上（GPU 或 CPU）
         self.model.to(self.device)
 
@@ -139,10 +146,13 @@ if __name__ == "__main__":
         '<|im_start|>中国矿业大学（北京）地球科学与测绘工程学院',
     ]
 
-    generator = TextGenerator(checkpoint='./base_model_215M/pretrain_1024_18_6144.pth')  # 初始化生成器
+    generator = TextGenerator(checkpoint='/Users/bigo/.cache/modelscope/hub/models/kmno4zx/happy-llm-215M-base/pretrain_1024_18_6144.pth')  # 初始化生成器
+
+    print(time.ctime(), '[start pretrain sample]')
     for i in range(len(pretrain_prompt_datas)):
         samples = generator.pretrain_sample(start=pretrain_prompt_datas[i], num_samples=1, max_new_tokens=120, temperature=0.75)
-        print(f"\nSample {i+1}:\n{pretrain_prompt_datas[i]}{samples[0]}\n{'-'*20}")  # 打印生成的样本并用分隔线分割
+        print(f"\n{time.ctime()} Sample {i+1}:\n{pretrain_prompt_datas[i]}{samples[0]}\n{'-'*20}")  # 打印生成的样本并用分隔线分割
+    print(time.ctime(), '[end pretrain sample]')
 
     print("\n ------------------- SFT Sample ------------------- \n")
 
@@ -152,9 +162,11 @@ if __name__ == "__main__":
         "1+12等于多少？",
         "你是谁？"
     ]
-    generator = TextGenerator(checkpoint='./sft_model_215M/sft_dim1024_layers18_vocab_size6144.pth')  # 初始化生成器
+    generator = TextGenerator(checkpoint='/Users/bigo/.cache/modelscope/hub/models/kmno4zx/happy-llm-215M-sft/pytorch_model.bin')  # 初始化生成器
+
+    print(time.ctime(), '[start sft sample]')
     for i in range(len(sft_prompt_datas)):
         samples = generator.sft_sample(start=sft_prompt_datas[i], num_samples=1, max_new_tokens=128, temperature=0.6)
-        print(f"\nSample {i+1}:\nQuestion: {sft_prompt_datas[i]} \nAI answer: {samples[0]}\n{'-'*20}")  # 打印生成的样本并用分隔线分割
-
+        print(f"\n{time.ctime()} Sample {i+1}:\nQuestion: {sft_prompt_datas[i]} \nAI answer: {samples[0]}\n{'-'*20}")  # 打印生成的样本并用分隔线分割
+    print(time.ctime(), '[end sft sample]')
     
