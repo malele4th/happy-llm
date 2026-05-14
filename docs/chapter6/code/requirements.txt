@@ -1,5 +1,7 @@
 transformers
 datasets
+openai>=2.0
+huggingface_hub
 torch
 torchdata==0.9.0
 deepspeed
