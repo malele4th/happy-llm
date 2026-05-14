@@ -163,7 +163,12 @@ cython_debug/
 
 .claude/
 
+
+# 忽略的文件
 docs/chapter5/code/logs/*
 docs/chapter5/code/data/*
 docs/chapter5/code/base_model/*
 docs/chapter5/code/sft_model/*
+
+docs/chapter6/code/autodl_model/qwen-1.5b/.cache/*
+docs/chapter6/code/autodl_model/qwen-1.5b/model.safetensors
