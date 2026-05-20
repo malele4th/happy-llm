@@ -139,7 +139,7 @@ def main():
 
     # 初始化模型
     if model_args.config_name is not None:
-        # from scrach
+        # from scratch
         config = AutoConfig.from_pretrained(model_args.config_name)
         logger.warning("你正在从零初始化一个模型")
         logger.info(f"模型参数配置地址：{model_args.config_name}")
@@ -167,7 +167,7 @@ def main():
     logger.info("完成训练集加载")
     logger.info(f"训练集地址：{data_args.train_files}")
     logger.info(f'训练文件总数:{len(ds["train"])}')
-    # logger.info(f"训练集采样：{ds["train"][0]}")
+    logger.info(f"训练集采样-第一条数据：{ds["train"][0]}")
 
     # 文本 tokenize
     column_names = list(ds["train"].features)

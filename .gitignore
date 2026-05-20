@@ -172,3 +172,5 @@ docs/chapter5/code/sft_model/*
 
 docs/chapter6/code/autodl_model/qwen-1.5b/.cache/*
 docs/chapter6/code/autodl_model/qwen-1.5b/model.safetensors
+docs/chapter6/code/data/*
+docs/chapter6/code/output/*
