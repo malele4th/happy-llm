@@ -7,10 +7,10 @@ import math
 import os
 import sys
 from dataclasses import dataclass, field
-from torchdata.datapipes.iter import IterableWrapper
 from itertools import chain
-import deepspeed
-from typing import Optional,List
+from typing import Optional, List
+
+from torchdata.datapipes.iter import IterableWrapper
 
 import datasets
 import pandas as pd
@@ -142,8 +142,8 @@ def main():
         # from scratch
         config = AutoConfig.from_pretrained(model_args.config_name)
 
-        # macbook本地测试时, 为了降低内存占用, 减小模型层数和参数
-        is_local_test = True
+        # macOS 本地测试时缩小模型，降低内存占用
+        is_local_test = sys.platform == "darwin"
         if is_local_test:
             config.num_hidden_layers = 2
             config.max_window_layers = 2   # 与层数对齐，避免 Qwen2 配置不一致
@@ -155,7 +155,9 @@ def main():
         logger.warning("你正在从零初始化一个模型")
         logger.info(f"模型参数配置地址：{model_args.config_name}")
         logger.info(f"模型参数：{config}")
-        model = AutoModelForCausalLM.from_config(config,trust_remote_code=True)
+        model = AutoModelForCausalLM.from_config(
+            config, trust_remote_code=True, torch_dtype=torch.bfloat16
+        )
         n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
         logger.info(f"预训练一个新模型 - Total size={n_params/2**20:.2f}M params")
     elif model_args.model_name_or_path is not None:
@@ -243,14 +245,18 @@ def main():
         )
         logger.info("完成数据预处理")
         train_dataset = lm_datasets["train"]
-    
+
+    # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
+    if training_args.deepspeed is not None:
+        train_dataset = IterableWrapper(train_dataset)
+
     logger.info("初始化 Trainer")
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset= IterableWrapper(train_dataset),
-        tokenizer=tokenizer,
-        data_collator=default_data_collator
+        train_dataset=train_dataset,
+        processing_class=tokenizer,
+        data_collator=default_data_collator,
     )
 
     # 从 checkpoint 加载
