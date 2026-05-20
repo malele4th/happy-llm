@@ -2,6 +2,12 @@ echo "[$(date)] start training"
 
 CUDA_VISIBLE_DEVICES=0,1
 
+# macOS 无 CUDA，DeepSpeed 不支持 bf16；Linux GPU 环境可启用
+PRECISION_ARGS=""
+if [[ "$(uname)" != "Darwin" ]]; then
+    PRECISION_ARGS="--bf16"
+fi
+
 deepspeed pretrain.py \
     --config_name autodl_model/qwen-1.5b \
     --tokenizer_name autodl_model/qwen-1.5b \
@@ -10,7 +16,7 @@ deepspeed pretrain.py \
     --gradient_accumulation_steps 4 \
     --do_train \
     --output_dir output/pretrain \
-    --evaluation_strategy  no \
+    --eval_strategy no \
     --learning_rate 1e-4 \
     --num_train_epochs 1 \
     --warmup_steps 50 \
@@ -23,7 +29,7 @@ deepspeed pretrain.py \
     --save_total_limit 1 \
     --seed 12 \
     --block_size 256 \
-    --bf16 \
+    $PRECISION_ARGS \
     --gradient_checkpointing \
     --deepspeed ./ds_config_zero2.json \
     --report_to swanlab

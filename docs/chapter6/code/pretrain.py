@@ -141,6 +141,17 @@ def main():
     if model_args.config_name is not None:
         # from scratch
         config = AutoConfig.from_pretrained(model_args.config_name)
+
+        # macbook本地测试时, 为了降低内存占用, 减小模型层数和参数
+        is_local_test = True
+        if is_local_test:
+            config.num_hidden_layers = 2
+            config.max_window_layers = 2   # 与层数对齐，避免 Qwen2 配置不一致
+            config.hidden_size = 256
+            config.intermediate_size = 1408   # 约为 hidden 的 5.5 倍，Qwen 常用比例
+            config.num_attention_heads = 8
+            config.num_key_value_heads = 2  # 必须能整除 num_attention_heads
+
         logger.warning("你正在从零初始化一个模型")
         logger.info(f"模型参数配置地址：{model_args.config_name}")
         logger.info(f"模型参数：{config}")
@@ -171,7 +182,7 @@ def main():
 
     # 文本 tokenize
     column_names = list(ds["train"].features)
-    logger.info('训练集特征：', column_names)
+    logger.info(f'训练集特征：{column_names}')
     text_column_name = "text" if "text" in column_names else column_names[0]
 
     # tokenize 函数

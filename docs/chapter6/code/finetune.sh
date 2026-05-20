@@ -1,5 +1,10 @@
 CUDA_VISIBLE_DEVICES=0,1
 
+PRECISION_ARGS=""
+if [[ "$(uname)" != "Darwin" ]]; then
+    PRECISION_ARGS="--bf16"
+fi
+
 deepspeed finetune.py \
     --model_name_or_path autodl-tmp/qwen-1.5b \
     --train_files autodl-tmp/dataset/sft_data/BelleGroup/train_3.5M_CN.json \
@@ -7,7 +12,7 @@ deepspeed finetune.py \
     --gradient_accumulation_steps 4 \
     --do_train \
     --output_dir autodl-tmp/output/sft \
-    --evaluation_strategy  no \
+    --eval_strategy no \
     --learning_rate 1e-4 \
     --num_train_epochs 3 \
     --warmup_steps 200 \
@@ -19,7 +24,7 @@ deepspeed finetune.py \
     --save_total_limit 1 \
     --seed 12 \
     --block_size 2048 \
-    --bf16 \
+    $PRECISION_ARGS \
     --gradient_checkpointing \
     --deepspeed ./ds_config_zero2.json \
     --report_to swanlab
