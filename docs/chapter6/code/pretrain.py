@@ -151,6 +151,8 @@ def main():
             config.intermediate_size = 1408   # 约为 hidden 的 5.5 倍，Qwen 常用比例
             config.num_attention_heads = 8
             config.num_key_value_heads = 2  # 必须能整除 num_attention_heads
+            if getattr(config, "layer_types", None):
+                config.layer_types = config.layer_types[:config.num_hidden_layers]
 
         logger.warning("你正在从零初始化一个模型")
         logger.info(f"模型参数配置地址：{model_args.config_name}")
