@@ -3,37 +3,28 @@ SFT 脚本
 '''
 
 import logging
-import math
 import os
 import sys
 from dataclasses import dataclass, field
-from torchdata.datapipes.iter import IterableWrapper
-from itertools import chain
-import deepspeed
-from typing import Optional,List,Dict
-from torch.utils.data import Dataset
-import json
+from typing import Dict, List, Optional
 
+from torchdata.datapipes.iter import IterableWrapper
 
 import datasets
-import pandas as pd
 import torch
 from datasets import load_dataset
 import transformers
 from transformers import (
-    AutoConfig,
     AutoModelForCausalLM,
     AutoTokenizer,
     HfArgumentParser,
     Trainer,
     TrainingArguments,
-    default_data_collator,
     set_seed,
 )
-import datetime
-from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 import swanlab
+from torch.utils.data import Dataset
 from tqdm import tqdm
 
 
@@ -55,6 +46,9 @@ class ModelArguments:
             )
         },
     )
+    tokenizer_name: Optional[str] = field(
+        default=None, metadata={"help": "Tokenizer 地址，默认与 model_name_or_path 相同"}
+    )
     torch_dtype: Optional[str] = field(
         default=None,
         metadata={
@@ -72,7 +66,7 @@ class DataTrainingArguments:
     关于训练的参数
     """
 
-    train_files: Optional[str]  = field(default=None, metadata={"help": "训练数据路径"})
+    train_files: Optional[List[str]] = field(default=None, metadata={"help": "训练数据路径"})
     block_size: Optional[int] = field(
         default=None,
         metadata={
@@ -80,6 +74,10 @@ class DataTrainingArguments:
                 "最大文本块长度"
             )
         },
+    )
+    preprocessing_num_workers: Optional[int] = field(
+        default=None,
+        metadata={"help": "预处理使用线程数."},
     )
 
 # 指令文本处理
@@ -142,7 +140,6 @@ def preprocess(sources, tokenizer, max_len, system_message: str = "You are a hel
         target += [IGNORE_TOKEN_ID] * (max_len - len(target))
         input_ids.append(input_id[:max_len])
         targets.append(target[:max_len])
-    # print(input_ids)
     input_ids = torch.tensor(input_ids)
     targets = torch.tensor(targets)
 
@@ -151,8 +148,7 @@ def preprocess(sources, tokenizer, max_len, system_message: str = "You are a hel
         labels=targets,
         attention_mask=input_ids.ne(tokenizer.pad_token_id),
     )
-# 自定义一个 Dataset
-from typing import Dict
+
 
 class SupervisedDataset(Dataset):
 
@@ -176,7 +172,7 @@ class SupervisedDataset(Dataset):
             attention_mask=self.attention_mask[i],
         )
 
-                
+
 def main():
 
     # 加载脚本参数
@@ -228,7 +224,7 @@ def main():
     # 初始化模型
     logger.warning("加载预训练模型")
     logger.info(f"模型参数地址：{model_args.model_name_or_path}")
-    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path,trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
     n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
     logger.info(f"继承一个预训练模型 - Total size={n_params/2**20:.2f}M params")
 
@@ -237,21 +233,50 @@ def main():
     logger.info("完成 tokenzier 加载")
 
     # 加载微调数据
-    with open(data_args.train_files) as f:
-        lst = [json.loads(line) for line in f.readlines()[:10000]]
+    ds = load_dataset('json', data_files=data_args.train_files)
     logger.info("完成训练集加载")
     logger.info(f"训练集地址：{data_args.train_files}")
-    logger.info(f'训练样本总数:{len(lst)}')
-    # logger.info(f"训练集采样：{ds["train"][0]}")
+    logger.info(f'训练文件总数:{len(ds["train"])}')
+    logger.info(f"训练集采样-第一条数据：{ds['train'][0]}")
 
-    train_dataset = SupervisedDataset(lst, tokenizer=tokenizer, max_len=2048)
-    
+    # macOS 本地测试时限制样本数，降低内存占用
+    is_local_test = sys.platform == "darwin"
+    raw_data = ds["train"]
+    if is_local_test:
+        max_samples = min(len(raw_data), 1000)
+        raw_data = raw_data.select(range(max_samples))
+        logger.info(f"macOS 本地测试，使用前 {max_samples} 条样本")
+
+    # 确定 block_size
+    if data_args.block_size is None:
+        block_size = tokenizer.model_max_length
+        if block_size > 1024:
+            logger.warning(
+                "tokenizer 支持大于 1K 的上下文长度，默认设置为 1K"
+            )
+            block_size = 1024
+    else:
+        if data_args.block_size > tokenizer.model_max_length:
+            logger.warning(
+                f"设定的块长为 ({data_args.block_size}) ，大于模型的上下文长度"
+                f"将块长设置为模型上下文长度：{tokenizer.model_max_length}."
+            )
+        block_size = min(data_args.block_size, tokenizer.model_max_length)
+
+    with training_args.main_process_first(desc="SFT 数据预处理"):
+        train_dataset = SupervisedDataset(raw_data, tokenizer=tokenizer, max_len=block_size)
+        logger.info("完成数据预处理")
+
+    # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
+    if training_args.deepspeed is not None:
+        train_dataset = IterableWrapper(train_dataset)
+
     logger.info("初始化 Trainer")
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset= IterableWrapper(train_dataset),
-        tokenizer=tokenizer
+        train_dataset=train_dataset,
+        processing_class=tokenizer,
     )
 
     # 从 checkpoint 加载
