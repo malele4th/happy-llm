@@ -109,6 +109,10 @@ def main():
     model = get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
+    # LoRA 冻结基座参数后，gradient checkpointing 需要输入参与 autograd 图
+    if training_args.gradient_checkpointing:
+        model.enable_input_require_grads()
+
     tokenizer_path = model_args.tokenizer_name or model_args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     logger.info("完成 tokenzier 加载")
