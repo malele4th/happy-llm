@@ -290,28 +290,28 @@ def main():
         train_dataset = SupervisedDataset(raw_data, tokenizer=tokenizer, max_len=block_size)
         logger.info("完成数据预处理")
 
-    # # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
-    # if training_args.deepspeed is not None:
-    #     train_dataset = IterableWrapper(train_dataset)
+    # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
+    if training_args.deepspeed is not None:
+        train_dataset = IterableWrapper(train_dataset)
 
-    # logger.info("初始化 Trainer")
-    # trainer = Trainer(
-    #     model=model,
-    #     args=training_args,
-    #     train_dataset=train_dataset,
-    #     processing_class=tokenizer,
-    # )
+    logger.info("初始化 Trainer")
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        processing_class=tokenizer,
+    )
 
-    # # 从 checkpoint 加载
-    # checkpoint = None
-    # if training_args.resume_from_checkpoint is not None:
-    #     checkpoint = training_args.resume_from_checkpoint
-    # elif last_checkpoint is not None:
-    #         checkpoint = last_checkpoint
+    # 从 checkpoint 加载
+    checkpoint = None
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
+    elif last_checkpoint is not None:
+            checkpoint = last_checkpoint
 
-    # logger.info("开始训练")
-    # train_result = trainer.train(resume_from_checkpoint=checkpoint)
-    # trainer.save_model() 
+    logger.info("开始训练")
+    train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    trainer.save_model() 
 
 if __name__ == "__main__":
     main()
