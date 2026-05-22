@@ -7,3 +7,4 @@ torchdata>=0.7.1
 deepspeed
 pandas
 swanlab
+peft
