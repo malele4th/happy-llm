@@ -89,64 +89,87 @@ def preprocess(sources, tokenizer, max_len, system_message: str = "You are a hel
     # 不同的 tokenizer 需要特别定义
     # BOS
     im_start = tokenizer("<|im_start|>").input_ids
+
     # EOS
     im_end = tokenizer("<|im_end|>").input_ids
+
     # PAD
     IGNORE_TOKEN_ID = tokenizer.pad_token_id
+
     # 换行符
     nl_tokens = tokenizer('\n').input_ids
+
     # 角色标识符
     _system = tokenizer('system').input_ids + nl_tokens
     _user = tokenizer('human').input_ids + nl_tokens
     _assistant = tokenizer('assistant').input_ids + nl_tokens
 
-    # 拼接多轮对话
+    # 拼接多个样本
     input_ids, targets = [], []
     for i in tqdm(range(len(sources))):
         source = sources[i]
+
         # 从 user 开始
+        # 如果第一个角色不是 user, 则从第二个角色开始
         if source[0]["from"] != "human":
             source = source[1:]
-        # 分别是输入和输出
+        
+        # 分别是输入和输出, 单个样本的输入和输出
         input_id, target = [], []
-        # system: 【BOS】system\nYou are a helpful assistant.【EOS】\n
+
+        # system: <|im_start|>system\nYou are a helpful assistant.<|im_end|>\n  # 固定格式
         system = im_start + _system + tokenizer(system_message).input_ids + im_end + nl_tokens
         input_id += system
+
         # system 不需要拟合
+        # 只有首尾的 im_start, im_end, nl_tokens 需要计算loss, 其余全部mask, 相当于在学 chat template 的结构
         target += im_start + [IGNORE_TOKEN_ID] * (len(system)-3) + im_end + nl_tokens
         assert len(input_id) == len(target)
-        # 依次拼接
+
+        # 依次拼接多轮对话
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
-            # user：<|im_start|>human\ninstruction【EOS】\n
-            # assistant：<|im_start|>assistant\nresponse【EOS】\n
+
+            # user: <|im_start|>human\n{instruction}<|im_end|>\n
+            # assistant: <|im_start|>assistant\n{response}<|im_end|>\n
             _input_id = tokenizer(role).input_ids + nl_tokens + \
                 tokenizer(sentence["value"]).input_ids + im_end + nl_tokens
             input_id += _input_id
+
             if role == '<|im_start|>human':
                 # user 不需要拟合
+                # 只有首尾的 im_start, im_end, nl_tokens 需要计算loss, 其余全部mask, 相当于在学 chat template 的结构
+                # <|im_start|>human 后面的 \n 也不算loss
                 _target = im_start + [IGNORE_TOKEN_ID] * (len(_input_id)-3) + im_end + nl_tokens
             elif role == '<|im_start|>assistant':
                 # assistant 需要拟合
+                # 只有 assistant\n 两个被mask掉了
+                # [len(tokenizer(role).input_ids)+1:-2] 相当于从 assistant\n(不含) 开始到 <|im_end|>(不含) 之间的部分
                 _target = im_start + [IGNORE_TOKEN_ID] * len(tokenizer(role).input_ids) + \
                     _input_id[len(tokenizer(role).input_ids)+1:-2] + im_end + nl_tokens
             else:
                 print(role)
                 raise NotImplementedError
+
             target += _target
+
         assert len(input_id) == len(target)
-        # 最后进行 PAD
+
+        # 最后进行 PAD & 截断到 max_len
         input_id += [tokenizer.pad_token_id] * (max_len - len(input_id))
         target += [IGNORE_TOKEN_ID] * (max_len - len(target))
         input_ids.append(input_id[:max_len])
         targets.append(target[:max_len])
+
     input_ids = torch.tensor(input_ids)
     targets = torch.tensor(targets)
-
+    logger.info(f"input_ids.shape: {input_ids.shape}")
+    logger.info(f"targets.shape: {targets.shape}")
+    
     return dict(
         input_ids=input_ids,
         labels=targets,
-        attention_mask=input_ids.ne(tokenizer.pad_token_id),
+        attention_mask=input_ids.ne(tokenizer.pad_token_id),  # ne()标识不等于, 不是pad的为True, pad的被mask
     )
 
 
@@ -244,7 +267,7 @@ def main():
     raw_data = ds["train"]
     if is_local_test:
         max_samples = min(len(raw_data), 1000)
-        raw_data = raw_data.select(range(max_samples))
+        raw_data = raw_data.select(range(max_samples))  # 选择前 max_samples 条样本
         logger.info(f"macOS 本地测试，使用前 {max_samples} 条样本")
 
     # 确定 block_size
@@ -267,28 +290,28 @@ def main():
         train_dataset = SupervisedDataset(raw_data, tokenizer=tokenizer, max_len=block_size)
         logger.info("完成数据预处理")
 
-    # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
-    if training_args.deepspeed is not None:
-        train_dataset = IterableWrapper(train_dataset)
+    # # DeepSpeed 需要 IterableWrapper；本地单卡直接用 Dataset
+    # if training_args.deepspeed is not None:
+    #     train_dataset = IterableWrapper(train_dataset)
 
-    logger.info("初始化 Trainer")
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        processing_class=tokenizer,
-    )
+    # logger.info("初始化 Trainer")
+    # trainer = Trainer(
+    #     model=model,
+    #     args=training_args,
+    #     train_dataset=train_dataset,
+    #     processing_class=tokenizer,
+    # )
 
-    # 从 checkpoint 加载
-    checkpoint = None
-    if training_args.resume_from_checkpoint is not None:
-        checkpoint = training_args.resume_from_checkpoint
-    elif last_checkpoint is not None:
-            checkpoint = last_checkpoint
+    # # 从 checkpoint 加载
+    # checkpoint = None
+    # if training_args.resume_from_checkpoint is not None:
+    #     checkpoint = training_args.resume_from_checkpoint
+    # elif last_checkpoint is not None:
+    #         checkpoint = last_checkpoint
 
-    logger.info("开始训练")
-    train_result = trainer.train(resume_from_checkpoint=checkpoint)
-    trainer.save_model() 
+    # logger.info("开始训练")
+    # train_result = trainer.train(resume_from_checkpoint=checkpoint)
+    # trainer.save_model() 
 
 if __name__ == "__main__":
     main()
