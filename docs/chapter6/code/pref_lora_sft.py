@@ -104,15 +104,20 @@ def main():
     n_params = sum({p.data_ptr(): p.numel() for p in model.parameters()}.values())
     logger.info(f"基座模型 - Total size={n_params/2**20:.2f}M params")
 
+    # 加载 lora 配置
     peft_config = build_lora_config(lora_args)
     logger.info(f"LoRA 配置：{peft_config}")
     model = get_peft_model(model, peft_config)
+    
+    logger.info("------- 打印可训练的参数 start ----------")
     model.print_trainable_parameters()
+    logger.info("------- 打印可训练的参数 end ----------")
 
     # LoRA 冻结基座参数后，gradient checkpointing 需要输入参与 autograd 图
     if training_args.gradient_checkpointing:
         model.enable_input_require_grads()
 
+    # tokenizer初始化
     tokenizer_path = model_args.tokenizer_name or model_args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     logger.info("完成 tokenzier 加载")
