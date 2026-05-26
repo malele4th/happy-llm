@@ -8,3 +8,4 @@ deepspeed
 pandas
 swanlab
 peft
+trl>=1.4.0
