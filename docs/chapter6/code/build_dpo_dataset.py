@@ -96,7 +96,7 @@ def main():
         default="data/toy_dpo_preferences.jsonl",
         help="DPO 偏好 jsonl 输出路径",
     )
-    parser.add_argument("--max_samples", type=int, default=800)
+    parser.add_argument("--max_samples", type=int, default=3000)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 

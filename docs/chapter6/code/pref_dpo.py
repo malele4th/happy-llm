@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 import datasets
+import torch
 import transformers
 from datasets import load_dataset
 from peft import get_peft_model
@@ -30,6 +31,24 @@ from pref_lora_sft import LoraArguments, build_lora_config
 logger = logging.getLogger(__name__)
 
 
+def resolve_torch_dtype(model_args, training_args):
+    """解析模型加载 dtype：macOS 默认 float16，GPU bf16 训练时用 bfloat16"""
+    dtype_map = {
+        "float16": torch.float16,
+        "bfloat16": torch.bfloat16,
+        "float32": torch.float32,
+    }
+    if model_args.torch_dtype:
+        if model_args.torch_dtype == "auto":
+            return "auto"
+        return dtype_map[model_args.torch_dtype]
+    if sys.platform == "darwin":
+        return torch.float16
+    if getattr(training_args, "bf16", False):
+        return torch.bfloat16
+    return torch.float16
+
+
 @dataclass
 class DPODataArguments:
     """DPO 数据参数"""
@@ -48,6 +67,8 @@ def main():
 
     # DPO 需要保留 prompt/chosen/rejected 列
     training_args.remove_unused_columns = False
+    if sys.platform == "darwin":
+        training_args.bf16 = False
 
     swanlab.init(project="dpo", experiment_name="qwen-1.5b-dpo")
 
@@ -73,9 +94,12 @@ def main():
 
     set_seed(training_args.seed)
 
-    logger.info(f"加载策略模型：{model_args.model_name_or_path}")
+    torch_dtype = resolve_torch_dtype(model_args, training_args)
+    logger.info(f"加载策略模型：{model_args.model_name_or_path}，dtype={torch_dtype}")
     model = AutoModelForCausalLM.from_pretrained(
-        model_args.model_name_or_path, trust_remote_code=True
+        model_args.model_name_or_path,
+        trust_remote_code=True,
+        dtype=torch_dtype,
     )
     model = get_peft_model(model, build_lora_config(lora_args))
     model.print_trainable_parameters()
@@ -97,10 +121,6 @@ def main():
         n = min(len(train_dataset), data_args.max_samples)
         train_dataset = train_dataset.select(range(n))
         logger.info(f"限制使用前 {n} 条样本")
-    elif sys.platform == "darwin":
-        n = min(len(train_dataset), 100)
-        train_dataset = train_dataset.select(range(n))
-        logger.info(f"macOS 本地测试，使用前 {n} 条样本")
 
     trainer = DPOTrainer(
         model=model,
