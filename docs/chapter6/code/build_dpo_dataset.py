@@ -3,6 +3,9 @@
 
 输出格式（jsonl，每行一条）:
 {"prompt": "...", "chosen": "...", "rejected": "..."}
+
+生成的 jsonl 里，每一行就是一条 DPO 偏好样本：1 个 prompt + 1 个 chosen + 1 个 rejected
+
 '''
 
 import argparse
@@ -23,15 +26,19 @@ REJECTED_TEMPLATES = [
 
 def make_rejected(chosen: str, rng: random.Random) -> str:
     """构造质量较差的 rejected 回复"""
-    strategy = rng.randint(0, 3)
+    strategy = rng.randint(0, 3) # 从 0,1,2,3中随机选择一个数
+
     if strategy == 0:
+        # 从rejected_templates中随机选择一个返回, 属于简单负例
         return rng.choice(REJECTED_TEMPLATES)
     if strategy == 1 and len(chosen) > 40:
-        # 截断版：信息不完整
+        # 和 chosen 很像，但不完整，属于“中等难度”负例
+        # 在 max_length 较小时，截断后容易和 chosen 几乎一样
         cut = max(20, len(chosen) // 4)
         return chosen[:cut].rstrip() + "……（后续省略）"
     if strategy == 2 and len(chosen) > 20:
         # 空洞复述
+        # 把 chosen 前 15 个字塞进固定套话：有内容但空洞、不具体，比模板稍难区分。
         return f"关于你的问题，我的看法是：{chosen[:15]}……总之就是这样。"
     return rng.choice(REJECTED_TEMPLATES)
 
@@ -41,8 +48,8 @@ def extract_pairs(conversations: list) -> list[dict]:
     i = 0
     while i < len(conversations) - 1:
         if conversations[i]["from"] == "human" and conversations[i + 1]["from"] == "assistant":
-            prompt = conversations[i]["value"].strip()
-            chosen = conversations[i + 1]["value"].strip()
+            prompt = conversations[i]["value"].strip() # human(用户)的回复 作为 prompt
+            chosen = conversations[i + 1]["value"].strip() # assistant(助手)的回复 作为 chosen
             if prompt and chosen:
                 pairs.append({"prompt": prompt, "chosen": chosen})
             i += 2
@@ -57,7 +64,7 @@ def build_dataset(
     max_samples: int = 800,
     seed: int = 42,
 ) -> int:
-    rng = random.Random(seed)
+    rng = random.Random(seed) # rng 不是随机数本身，而是“按 seed 固定下来的随机数发生器”，专门用来可复现地生成 rejected 和 shuffle 数据
     samples = []
 
     with open(input_path, encoding="utf-8") as f:

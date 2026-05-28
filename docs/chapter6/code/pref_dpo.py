@@ -72,6 +72,7 @@ def main():
 
     swanlab.init(project="dpo", experiment_name="qwen-1.5b-dpo")
 
+    # 设置日志
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
@@ -84,6 +85,7 @@ def main():
     logger.info(f"DPO training args: {training_args}")
     logger.info(f"LoRA args: {lora_args}")
 
+    # 检查 checkpoint
     last_checkpoint = None
     if os.path.isdir(training_args.output_dir):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
@@ -95,6 +97,8 @@ def main():
     set_seed(training_args.seed)
 
     torch_dtype = resolve_torch_dtype(model_args, training_args)
+
+    # 加载模型 & 挂载 LoRA
     logger.info(f"加载策略模型：{model_args.model_name_or_path}，dtype={torch_dtype}")
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_name_or_path,
@@ -107,11 +111,13 @@ def main():
     if training_args.gradient_checkpointing:
         model.enable_input_require_grads()
 
+    # 加载 tokenizer
     tokenizer_path = model_args.tokenizer_name or model_args.model_name_or_path
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # 加载数据集
     ds = load_dataset("json", data_files=data_args.train_files)
     train_dataset = ds["train"]
     logger.info(f"DPO 数据集：{data_args.train_files}，共 {len(train_dataset)} 条")
@@ -122,6 +128,7 @@ def main():
         train_dataset = train_dataset.select(range(n))
         logger.info(f"限制使用前 {n} 条样本")
 
+    # dpo训练器初始化
     trainer = DPOTrainer(
         model=model,
         ref_model=None,
