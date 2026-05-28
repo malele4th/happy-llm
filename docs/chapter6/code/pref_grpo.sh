@@ -58,12 +58,12 @@ GRPO_COMMON_ARGS=(
     --train_files data/toy_grpo_prompts.jsonl
     --reward_model_path output/grpo/reward_model
     --do_train
-    --output_dir output/grpo
+    --output_dir output/grpo/policy
     --eval_strategy no
     --learning_rate 1e-5
     --num_train_epochs 1
     --warmup_steps 10
-    --logging_dir output/grpo/logs
+    --logging_dir output/grpo/policy/logs
     --logging_strategy steps
     --logging_steps 5
     --save_strategy steps

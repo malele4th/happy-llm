@@ -90,7 +90,11 @@ def main():
     if os.path.isdir(training_args.output_dir):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
-            raise ValueError(f"输出路径 ({training_args.output_dir}) 非空")
+            raise ValueError(
+                f"输出路径 ({training_args.output_dir}) 非空。"
+                "请换目录或清空后重试；奖励模型与策略模型应分开保存"
+                "（如 reward: output/grpo/reward_model，policy: output/grpo/policy）。"
+            )
         elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
             logger.info(f"从 {last_checkpoint} 恢复训练")
 
