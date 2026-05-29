@@ -57,10 +57,11 @@ GRPO_COMMON_ARGS=(
     --tokenizer_name output/pretrain
     --train_files data/toy_grpo_prompts.jsonl
     --reward_model_path output/grpo/reward_model
+    --max_samples 500
     --do_train
     --output_dir output/grpo/policy
     --eval_strategy no
-    --learning_rate 1e-5
+    --learning_rate 2e-4
     --num_train_epochs 1
     --warmup_steps 10
     --logging_dir output/grpo/policy/logs
@@ -70,8 +71,11 @@ GRPO_COMMON_ARGS=(
     --save_steps 50
     --save_total_limit 1
     --seed 12
+    --loss_type grpo
+    --epsilon 0.0001
     --beta 0.04
     --num_generations 2
+    --num_iterations 4
     --max_completion_length 32
     --temperature 0.7
     --gradient_checkpointing
