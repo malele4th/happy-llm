@@ -49,4 +49,7 @@ class VectorStore:
         query_vector = EmbeddingModel.get_embedding(query)
         result = np.array([self.get_similarity(query_vector, vector)
                           for vector in self.vectors])
+        # 返回相似度最高的k个文档
+        # argsort() 返回排序后的索引, 从小到大排序
+        # [-k:][::-1] 取后k个, 并反转, 从大到小排序
         return np.array(self.document)[result.argsort()[-k:][::-1]].tolist()

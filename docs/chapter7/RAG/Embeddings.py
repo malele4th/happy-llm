@@ -94,7 +94,7 @@ class OpenAIEmbedding(BaseEmbeddings):
     
     def get_embedding(self, text: str, model: str = "BAAI/bge-m3") -> List[float]:
         """
-        此处默认使用轨迹流动的免费嵌入模型 BAAI/bge-m3
+        此处默认使用 硅基流动 的免费嵌入模型 BAAI/bge-m3
         """
         if self.is_api:
             text = text.replace("\n", " ")

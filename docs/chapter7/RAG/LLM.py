@@ -44,7 +44,9 @@ class OpenAIChat(BaseModel):
         client = OpenAI()
         client.api_key = os.getenv("OPENAI_API_KEY")   
         client.base_url = os.getenv("OPENAI_BASE_URL")
+        
         history.append({'role': 'user', 'content': RAG_PROMPT_TEMPLATE.format(question=prompt, context=content)})
+
         response = client.chat.completions.create(
             model=self.model,
             messages=history,
