@@ -19,6 +19,8 @@ import tiktoken
 from bs4 import BeautifulSoup
 import re
 
+# tiktoken: OpenAI 常用的分词库，把文本切成模型实际处理的 token
+# cl100k_base: GPT-3.5 / GPT-4 等模型用的编码方式，词表大约 10 万
 enc = tiktoken.get_encoding("cl100k_base")
 
 
@@ -70,7 +72,7 @@ class ReadFiles:
         for line in lines:
             # 保留空格，只移除行首行尾空格
             line = line.strip()
-            line_len = len(enc.encode(line))
+            line_len = len(enc.encode(line)) # 统计 token 长度, 而不是字符长度, LLM模型限制的最大长度是token数
             
             if line_len > max_token_len:
                 # 如果单行长度就超过限制，则将其分割成多个块
@@ -82,11 +84,11 @@ class ReadFiles:
                 
                 # 将长行按token长度分割
                 line_tokens = enc.encode(line)
-                num_chunks = (len(line_tokens) + token_len - 1) // token_len
+                num_chunks = (len(line_tokens) + token_len - 1) // token_len # 计算需要切分成多少个块, 向上取整
                 
                 for i in range(num_chunks):
                     start_token = i * token_len
-                    end_token = min(start_token + token_len, len(line_tokens))
+                    end_token = min(start_token + token_len, len(line_tokens))  # 最后一块即使不足 token_len, 也会保留
                     
                     # 解码token片段回文本
                     chunk_tokens = line_tokens[start_token:end_token]
@@ -94,7 +96,7 @@ class ReadFiles:
                     
                     # 添加覆盖内容（除了第一个块）
                     if i > 0 and chunk_text:
-                        prev_chunk = chunk_text[-1]
+                        prev_chunk = chunk_text[-1] # 获取上一个文本块
                         cover_part = prev_chunk[-cover_content:] if len(prev_chunk) > cover_content else prev_chunk
                         chunk_part = cover_part + chunk_part
                     
