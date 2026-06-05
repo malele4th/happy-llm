@@ -24,6 +24,14 @@ import re
 enc = tiktoken.get_encoding("cl100k_base")
 
 
+def _get_token_cover(text: str, cover_tokens: int) -> str:
+    """取文本尾部指定 token 数作为重叠内容"""
+    tokens = enc.encode(text)
+    if len(tokens) <= cover_tokens:
+        return text
+    return enc.decode(tokens[-cover_tokens:])
+
+
 class ReadFiles:
     """
     class to read files
@@ -94,10 +102,10 @@ class ReadFiles:
                     chunk_tokens = line_tokens[start_token:end_token]
                     chunk_part = enc.decode(chunk_tokens)
                     
-                    # 添加覆盖内容（除了第一个块）
-                    if i > 0 and chunk_text:
-                        prev_chunk = chunk_text[-1] # 获取上一个文本块
-                        cover_part = prev_chunk[-cover_content:] if len(prev_chunk) > cover_content else prev_chunk
+                    # 添加覆盖内容（除了第一个块），按 token 取重叠
+                    if i > 0:
+                        overlap_start = max(0, start_token - cover_content)
+                        cover_part = enc.decode(line_tokens[overlap_start:start_token])
                         chunk_part = cover_part + chunk_part
                     
                     chunk_text.append(chunk_part)
@@ -107,7 +115,7 @@ class ReadFiles:
                 curr_len = 0
                 
             elif curr_len + line_len + 1 <= token_len:  # +1 for newline
-                # 当前行可以加入当前块
+                # 当前行可以加入当前块 (当前行的长度 + 换行符的长度 <= 最大 token 长度)
                 if curr_chunk:
                     curr_chunk += '\n'
                     curr_len += 1
@@ -118,10 +126,9 @@ class ReadFiles:
                 if curr_chunk:
                     chunk_text.append(curr_chunk)
                 
-                # 开始新块，添加覆盖内容
+                # 开始新块，添加覆盖内容（按 token 取重叠）
                 if chunk_text:
-                    prev_chunk = chunk_text[-1]
-                    cover_part = prev_chunk[-cover_content:] if len(prev_chunk) > cover_content else prev_chunk
+                    cover_part = _get_token_cover(chunk_text[-1], cover_content)
                     curr_chunk = cover_part + '\n' + line
                     curr_len = len(enc.encode(cover_part)) + 1 + line_len
                 else:
