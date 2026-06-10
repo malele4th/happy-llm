@@ -9,8 +9,8 @@ from docx import Document
 
 from chunker import count_tokens, get_chunk
 from config import HEADING_MAX_LEN, MAX_TOKEN_LEN, PROJECT_KEYWORDS
+from models import ChunkMetadata, DocumentChunk
 from utils import (
-    DocumentChunk,
     format_report_date,
     parse_report_date_from_path,
     parse_report_date_from_text,
@@ -98,7 +98,7 @@ def split_docx_into_sections(file_path: str) -> List[Tuple[str, List[str]]]:
 
     for table in doc.tables:
         for row in table.rows:
-            row_text = " | ".join(c.text.strip() for c in row.cells if c.text.strip())
+            row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
             if row_text:
                 paragraphs.append((row_text, None))
 
@@ -106,10 +106,10 @@ def split_docx_into_sections(file_path: str) -> List[Tuple[str, List[str]]]:
     current_heading = "综合"
     current_lines: List[str] = []
 
-    for i, (line, style_name) in enumerate(paragraphs):
+    for index, (line, style_name) in enumerate(paragraphs):
         if is_report_title(line):
             continue
-        next_line = paragraphs[i + 1][0] if i + 1 < len(paragraphs) else None
+        next_line = paragraphs[index + 1][0] if index + 1 < len(paragraphs) else None
         if is_section_heading(line, next_line, style_name):
             if current_lines or current_heading != "综合":
                 sections.append((current_heading, current_lines))
@@ -122,7 +122,7 @@ def split_docx_into_sections(file_path: str) -> List[Tuple[str, List[str]]]:
         sections.append((current_heading, current_lines))
 
     if not sections and paragraphs:
-        sections.append(("综合", [p[0] for p in paragraphs]))
+        sections.append(("综合", [item[0] for item in paragraphs]))
 
     return sections
 
@@ -137,22 +137,33 @@ def sections_to_chunks(
         if not body_lines:
             continue
         section_text = build_chunk_text(rel_path, report_date, project, body_lines)
+        base_metadata = ChunkMetadata(
+            source=rel_path,
+            report_date=report_date,
+            project=project,
+        )
         if count_tokens(section_text) <= MAX_TOKEN_LEN:
-            chunks.append(DocumentChunk(section_text, rel_path, report_date, project))
+            chunks.append(DocumentChunk(section_text, base_metadata))
         else:
-            for part in get_chunk(section_text):
-                chunks.append(DocumentChunk(part, rel_path, report_date, project))
+            for chunk_index, part in enumerate(get_chunk(section_text)):
+                metadata = ChunkMetadata(
+                    source=rel_path,
+                    report_date=report_date,
+                    project=project,
+                    chunk_index=chunk_index,
+                )
+                chunks.append(DocumentChunk(part, metadata))
     return chunks
 
 
 class ReadFiles:
     def __init__(self, path: str) -> None:
-        self._path = os.path.abspath(path)
-        self.file_list = self.get_files()
+        self.data_path = os.path.abspath(path)
+        self.file_list = self._scan_files()
 
-    def get_files(self) -> List[str]:
+    def _scan_files(self) -> List[str]:
         file_list = []
-        for filepath, _, filenames in os.walk(self._path):
+        for filepath, _, filenames in os.walk(self.data_path):
             for filename in filenames:
                 if filename.startswith("~$") or filename == "tmp.docx":
                     continue
@@ -172,7 +183,7 @@ class ReadFiles:
         return report_date
 
     def get_chunks_for_file(self, file_path: str) -> List[DocumentChunk]:
-        rel_path = os.path.relpath(file_path, self._path)
+        rel_path = os.path.relpath(file_path, self.data_path)
         sections = split_docx_into_sections(file_path)
         report_date = self._resolve_report_date(file_path, sections)
         return sections_to_chunks(rel_path, report_date, sections)

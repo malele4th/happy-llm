@@ -3,41 +3,7 @@
 
 import os
 import re
-from dataclasses import asdict, dataclass
 from typing import List, Optional, Tuple
-
-
-@dataclass
-class ChunkMetadata:
-    source: str
-    report_date: str = ""
-    project: str = "综合"
-
-    def to_dict(self) -> dict:
-        return asdict(self)
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "ChunkMetadata":
-        return cls(
-            source=data.get("source", ""),
-            report_date=data.get("report_date", ""),
-            project=data.get("project", "综合"),
-        )
-
-
-@dataclass
-class DocumentChunk:
-    text: str
-    source: str
-    report_date: str
-    project: str
-
-    def to_metadata(self) -> ChunkMetadata:
-        return ChunkMetadata(
-            source=self.source,
-            report_date=self.report_date,
-            project=self.project,
-        )
 
 
 def parse_report_date_from_path(file_path: str) -> str:
@@ -76,4 +42,4 @@ def parse_date_filter(question: str) -> Tuple[Optional[int], Optional[int]]:
 
 def extract_query_tokens(query: str) -> List[str]:
     tokens = re.findall(r"[\u4e00-\u9fff]+|[a-zA-Z0-9]+", query.lower())
-    return [t for t in tokens if len(t) >= 2]
+    return [token for token in tokens if len(token) >= 2]

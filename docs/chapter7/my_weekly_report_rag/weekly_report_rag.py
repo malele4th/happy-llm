@@ -5,9 +5,13 @@
 import argparse
 import sys
 
-from config import DEFAULT_K, DEFAULT_SEARCH_MODE, REPORT_DATA_PATH, SEARCH_MODES, STORAGE_PATH
+from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH
 from exceptions import WeeklyReportRagError
-from service import ask, build_index, interactive_chat, print_search_results, search
+from indexing import build_index
+from models import DEFAULT_SEARCH_MODE, SEARCH_MODES
+from presentation import print_search_results
+from retrieval import search
+from service import ask, interactive_chat
 
 
 def main() -> None:

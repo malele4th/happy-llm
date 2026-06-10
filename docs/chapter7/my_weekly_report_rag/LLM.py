@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-from typing import List
-
-from dotenv import find_dotenv, load_dotenv
-from openai import OpenAI
-
+from clients import get_openai_client
 from config import CHAT_MODEL
-
-_ = load_dotenv(find_dotenv())
 
 WEEKLY_REPORT_PROMPT = """
 你是工作周报助手。根据以下周报片段回答用户问题。
@@ -27,9 +20,7 @@ WEEKLY_REPORT_PROMPT = """
 class OpenAIChat:
     def __init__(self, model: str = CHAT_MODEL) -> None:
         self.model = model
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.client.base_url = os.getenv("OPENAI_BASE_URL")
+        self.client = get_openai_client()
 
     def chat(self, prompt: str, content: str) -> str:
         messages = [{

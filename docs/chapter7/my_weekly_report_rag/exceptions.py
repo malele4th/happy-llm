@@ -14,9 +14,9 @@ class StorageNotFoundError(WeeklyReportRagError):
     """向量库不存在或不完整。"""
 
 
+class StorageCorruptError(WeeklyReportRagError):
+    """向量库数据不一致或损坏。"""
+
+
 class NoDataError(WeeklyReportRagError):
     """数据目录下没有可索引文件。"""
-
-
-class IndexExistsError(WeeklyReportRagError):
-    """索引已存在且未指定强制重建。"""

@@ -1,29 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import time
 from typing import List, Optional
 
-import numpy as np
-from dotenv import find_dotenv, load_dotenv
-from openai import OpenAI
-
+from clients import get_openai_client
 from config import EMBEDDING_BATCH_SIZE, EMBEDDING_MAX_RETRIES, EMBEDDING_MODEL
-
-_ = load_dotenv(find_dotenv())
-
-
-def cosine_similarity(vector1: List[float], vector2: List[float]) -> float:
-    v1 = np.array(vector1, dtype=np.float32)
-    v2 = np.array(vector2, dtype=np.float32)
-    if not np.all(np.isfinite(v1)) or not np.all(np.isfinite(v2)):
-        return 0.0
-    dot_product = np.dot(v1, v2)
-    magnitude = np.linalg.norm(v1) * np.linalg.norm(v2)
-    if magnitude == 0:
-        return 0.0
-    return float(dot_product / magnitude)
 
 
 class BaseEmbeddings:
@@ -36,9 +18,7 @@ class BaseEmbeddings:
 
 class OpenAIEmbedding(BaseEmbeddings):
     def __init__(self) -> None:
-        self.client = OpenAI()
-        self.client.api_key = os.getenv("OPENAI_API_KEY")
-        self.client.base_url = os.getenv("OPENAI_BASE_URL")
+        self.client = get_openai_client()
 
     def get_embeddings(self, texts: List[str], model: str = EMBEDDING_MODEL) -> List[List[float]]:
         if not texts:
