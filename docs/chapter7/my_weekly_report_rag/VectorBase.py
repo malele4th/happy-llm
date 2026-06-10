@@ -4,13 +4,22 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm
 
-from config import DEFAULT_K, SIMILARITY_THRESHOLD, STORAGE_PATH
-from Embeddings import BaseEmbeddings
+from config import (
+    DEFAULT_K,
+    KEYWORD_BOOST_MAX,
+    KEYWORD_PROJECT_BOOST,
+    KEYWORD_TOKEN_BOOST,
+    PROJECT_KEYWORDS,
+    SIMILARITY_THRESHOLD,
+    STORAGE_PATH,
+)
+from Embeddings import BaseEmbeddings, cosine_similarity
+from utils import extract_query_tokens
 
 
 @dataclass
@@ -30,11 +39,16 @@ class VectorStore:
         self.metadata = metadata or []
         self.vectors: List[List[float]] = []
 
-    def get_vector(self, embedding_model: BaseEmbeddings) -> List[List[float]]:
-        self.vectors = []
-        for doc in tqdm(self.document, desc="Calculating embeddings"):
-            self.vectors.append(embedding_model.get_embedding(doc))
-        return self.vectors
+    def get_vector(
+        self,
+        embedding_model: BaseEmbeddings,
+        texts: Optional[List[str]] = None,
+    ) -> List[List[float]]:
+        docs = texts if texts is not None else self.document
+        embeddings = embedding_model.get_embeddings(docs)
+        if texts is None:
+            self.vectors = embeddings
+        return embeddings
 
     def persist(self, path: str = STORAGE_PATH) -> None:
         os.makedirs(path, exist_ok=True)
@@ -80,6 +94,72 @@ class VectorStore:
             indices.append(i)
         return indices
 
+    @staticmethod
+    def _keyword_boost(query: str, meta: dict) -> float:
+        project = meta.get("project", "")
+        text = meta.get("source", "")
+        boost = 0.0
+        query_lower = query.lower()
+        project_lower = project.lower()
+
+        for keyword in PROJECT_KEYWORDS:
+            kw = keyword.lower()
+            if kw in query_lower and kw in project_lower:
+                boost += KEYWORD_PROJECT_BOOST
+
+        for token in extract_query_tokens(query):
+            if token in project_lower or token in text.lower():
+                boost += KEYWORD_TOKEN_BOOST
+
+        return min(boost, KEYWORD_BOOST_MAX)
+
+    @staticmethod
+    def _batch_cosine_similarity(
+        query_vector: List[float],
+        candidate_vectors: List[List[float]],
+    ) -> np.ndarray:
+        if not candidate_vectors:
+            return np.array([], dtype=np.float32)
+
+        query = np.array(query_vector, dtype=np.float32)
+        matrix = np.array(candidate_vectors, dtype=np.float32)
+
+        if not np.all(np.isfinite(query)) or not np.all(np.isfinite(matrix)):
+            return np.array(
+                [cosine_similarity(query_vector, vec) for vec in candidate_vectors],
+                dtype=np.float32,
+            )
+
+        query_norm = np.linalg.norm(query)
+        if query_norm == 0:
+            return np.zeros(len(candidate_vectors), dtype=np.float32)
+
+        matrix_norms = np.linalg.norm(matrix, axis=1)
+        valid = matrix_norms > 0
+        scores = np.zeros(len(candidate_vectors), dtype=np.float32)
+
+        if np.any(valid):
+            normalized_query = query / query_norm
+            normalized_matrix = matrix[valid] / matrix_norms[valid, np.newaxis]
+            scores[valid] = normalized_matrix @ normalized_query
+
+        return scores
+
+    @staticmethod
+    def _dedupe_results(results: List[SearchResult]) -> List[SearchResult]:
+        seen: set[Tuple[str, str]] = set()
+        deduped: List[SearchResult] = []
+        for result in results:
+            key = (
+                result.metadata.get("source", ""),
+                result.metadata.get("project", ""),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(result)
+        return deduped
+
     def query(
         self,
         query: str,
@@ -98,14 +178,19 @@ class VectorStore:
         if not candidate_indices:
             candidate_indices = list(range(len(self.document)))
 
-        scores = []
-        for i in candidate_indices:
-            score = BaseEmbeddings.cosine_similarity(query_vector, self.vectors[i])
-            scores.append((i, score))
+        candidate_vectors = [self.vectors[i] for i in candidate_indices]
+        similarities = self._batch_cosine_similarity(query_vector, candidate_vectors)
 
-        scores.sort(key=lambda x: x[1], reverse=True)
-        results = []
-        for idx, score in scores[:k]:
+        scores: List[Tuple[int, float]] = []
+        for offset, idx in enumerate(candidate_indices):
+            meta = self.metadata[idx] if idx < len(self.metadata) else {}
+            hybrid_score = float(similarities[offset]) + self._keyword_boost(query, meta)
+            scores.append((idx, hybrid_score))
+
+        scores.sort(key=lambda item: item[1], reverse=True)
+
+        results: List[SearchResult] = []
+        for idx, score in scores:
             if score < threshold:
                 continue
             results.append(
@@ -115,4 +200,6 @@ class VectorStore:
                     metadata=self.metadata[idx] if idx < len(self.metadata) else {},
                 )
             )
-        return results
+
+        results = self._dedupe_results(results)
+        return results[:k]

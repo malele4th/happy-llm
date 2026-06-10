@@ -27,18 +27,18 @@ WEEKLY_REPORT_PROMPT = """
 class OpenAIChat:
     def __init__(self, model: str = CHAT_MODEL) -> None:
         self.model = model
+        self.client = OpenAI()
+        self.client.api_key = os.getenv("OPENAI_API_KEY")
+        self.client.base_url = os.getenv("OPENAI_BASE_URL")
 
-    def chat(self, prompt: str, history: List[dict], content: str) -> str:
-        client = OpenAI()
-        client.api_key = os.getenv("OPENAI_API_KEY")
-        client.base_url = os.getenv("OPENAI_BASE_URL")
-        history.append({
+    def chat(self, prompt: str, content: str) -> str:
+        messages = [{
             "role": "user",
             "content": WEEKLY_REPORT_PROMPT.format(question=prompt, context=content),
-        })
-        response = client.chat.completions.create(
+        }]
+        response = self.client.chat.completions.create(
             model=self.model,
-            messages=history,
+            messages=messages,
             max_tokens=2048,
             temperature=0.1,
         )
