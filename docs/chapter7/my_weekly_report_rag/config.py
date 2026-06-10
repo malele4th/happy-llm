@@ -35,3 +35,6 @@ PROJECT_KEYWORDS = [
 ]
 
 MANIFEST_FILE = "manifest.json"
+
+SEARCH_MODES = ("latest", "timeline", "compare")
+DEFAULT_SEARCH_MODE = "latest"

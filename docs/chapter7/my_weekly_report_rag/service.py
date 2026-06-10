@@ -7,13 +7,19 @@ import os
 import shutil
 from typing import List, Optional, Tuple
 
-from config import DEFAULT_K, MANIFEST_FILE, REPORT_DATA_PATH, STORAGE_PATH
+from config import (
+    DEFAULT_K,
+    DEFAULT_SEARCH_MODE,
+    MANIFEST_FILE,
+    REPORT_DATA_PATH,
+    STORAGE_PATH,
+)
 from Embeddings import OpenAIEmbedding
 from exceptions import EnvConfigError, NoDataError, StorageNotFoundError
 from LLM import OpenAIChat
 from parser import ReadFiles
-from utils import parse_date_filter
-from VectorBase import SearchResult, VectorStore
+from utils import format_report_date, parse_date_filter
+from VectorBase import SearchMode, SearchResult, VectorStore
 
 
 def check_env() -> None:
@@ -80,6 +86,7 @@ class RAGSession:
         k: int = DEFAULT_K,
         year: Optional[int] = None,
         month: Optional[int] = None,
+        mode: SearchMode = DEFAULT_SEARCH_MODE,
     ) -> List[SearchResult]:
         return self.vector.query(
             question,
@@ -87,6 +94,7 @@ class RAGSession:
             k=k,
             year=year,
             month=month,
+            mode=mode,
         )
 
 
@@ -206,11 +214,14 @@ def search(
     year: Optional[int] = None,
     month: Optional[int] = None,
     auto_date: bool = False,
+    mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> List[SearchResult]:
     filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
     if session is not None:
-        return session.search(question, k=k, year=filter_year, month=filter_month)
+        return session.search(
+            question, k=k, year=filter_year, month=filter_month, mode=mode
+        )
 
     vector = load_index(storage_path)
     embedding = OpenAIEmbedding()
@@ -220,21 +231,47 @@ def search(
         k=k,
         year=filter_year,
         month=filter_month,
+        mode=mode,
     )
 
 
-def print_search_results(results: List[SearchResult]) -> None:
+def build_numbered_context(results: List[SearchResult]) -> str:
+    return "\n\n---\n\n".join(
+        f"[{index}]\n{result.text}" for index, result in enumerate(results, 1)
+    )
+
+
+def format_citations(results: List[SearchResult]) -> str:
+    lines = ["【引用】"]
+    for index, result in enumerate(results, 1):
+        meta = result.metadata
+        date = format_report_date(meta.get("report_date", "")) or "?"
+        project = meta.get("project", "?")
+        lines.append(f"[{index}] {date} | {project} | score={result.score:.3f}")
+    return "\n".join(lines)
+
+
+def format_answer_with_citations(answer: str, results: List[SearchResult]) -> str:
+    return f"【回答】\n{answer}\n\n{format_citations(results)}"
+
+
+def print_search_results(results: List[SearchResult], verbose: bool = False) -> None:
     if not results:
         print("  (未检索到满足相似度阈值的片段)")
         return
     for index, result in enumerate(results, 1):
         meta = result.metadata
+        date = format_report_date(meta.get("report_date", "")) or "?"
         print(
             f"  [{index}] score={result.score:.3f} | "
-            f"{meta.get('report_date', '?')} | {meta.get('project', '?')}"
+            f"{date} | {meta.get('project', '?')}"
         )
-        preview = result.text.split("\n", 1)[-1][:120].replace("\n", " ")
-        print(f"      {preview}...")
+        body = result.text.split("\n", 1)[-1]
+        if verbose:
+            print(f"      {body}")
+        else:
+            preview = body[:120].replace("\n", " ")
+            print(f"      {preview}...")
 
 
 def ask(
@@ -245,6 +282,7 @@ def ask(
     year: Optional[int] = None,
     month: Optional[int] = None,
     auto_date: bool = False,
+    mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> str:
     check_env()
@@ -254,7 +292,11 @@ def ask(
         question, year, month, auto_date
     )
     results = active_session.search(
-        question, k=k, year=filter_year, month=filter_month
+        question,
+        k=k,
+        year=filter_year,
+        month=filter_month,
+        mode=mode,
     )
 
     if debug:
@@ -263,14 +305,15 @@ def ask(
             if filter_year is not None
             else "无"
         )
-        print(f"检索过滤: {filter_desc}")
+        print(f"检索模式: {mode} | 过滤: {filter_desc}")
         print_search_results(results)
 
     if not results:
         return "周报中没有找到相关内容，请尝试换个问法或指定 --year/--month。"
 
-    context = "\n\n---\n\n".join(result.text for result in results)
-    return active_session.chat.chat(question, context)
+    context = build_numbered_context(results)
+    answer = active_session.chat.chat(question, context)
+    return format_answer_with_citations(answer, results)
 
 
 def interactive_chat(
@@ -280,6 +323,7 @@ def interactive_chat(
     year: Optional[int] = None,
     month: Optional[int] = None,
     auto_date: bool = False,
+    mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
     session = RAGSession(storage_path)
     print("周报 RAG 交互模式（输入 quit 退出，每轮独立检索）")
@@ -304,6 +348,7 @@ def interactive_chat(
             year=year,
             month=month,
             auto_date=auto_date,
+            mode=mode,
             session=session,
         )
         print(f"\n{answer}")

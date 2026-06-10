@@ -5,7 +5,7 @@
 import argparse
 import sys
 
-from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH
+from config import DEFAULT_K, DEFAULT_SEARCH_MODE, REPORT_DATA_PATH, SEARCH_MODES, STORAGE_PATH
 from exceptions import WeeklyReportRagError
 from service import ask, build_index, interactive_chat, print_search_results, search
 
@@ -18,7 +18,14 @@ def main() -> None:
     parser.add_argument("--search", type=str, help="仅检索，不调用 LLM（调试用）")
     parser.add_argument("--chat", action="store_true", help="交互式问答")
     parser.add_argument("--debug", action="store_true", help="显示检索分数与过滤条件")
+    parser.add_argument("--verbose", action="store_true", help="检索时打印完整 chunk 内容")
     parser.add_argument("--k", type=int, default=DEFAULT_K, help=f"检索 top-k 片段（默认 {DEFAULT_K}）")
+    parser.add_argument(
+        "--mode",
+        choices=SEARCH_MODES,
+        default=DEFAULT_SEARCH_MODE,
+        help="检索模式: latest=同项目取最新, timeline=按时间线, compare=按月对比",
+    )
     parser.add_argument("--year", type=int, help="按年份过滤检索结果")
     parser.add_argument("--month", type=int, help="按月份过滤检索结果（需配合 --year）")
     parser.add_argument(
@@ -41,8 +48,11 @@ def main() -> None:
                 year=args.year,
                 month=args.month,
                 auto_date=args.auto_date,
+                mode=args.mode,
             )
-            print_search_results(results)
+            if args.debug:
+                print(f"检索模式: {args.mode}")
+            print_search_results(results, verbose=args.verbose)
         elif args.query:
             print(
                 ask(
@@ -53,6 +63,7 @@ def main() -> None:
                     year=args.year,
                     month=args.month,
                     auto_date=args.auto_date,
+                    mode=args.mode,
                 )
             )
         elif args.chat:
@@ -63,6 +74,7 @@ def main() -> None:
                 year=args.year,
                 month=args.month,
                 auto_date=args.auto_date,
+                mode=args.mode,
             )
         else:
             parser.print_help()

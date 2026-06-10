@@ -4,7 +4,9 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
+
+SearchMode = Literal["latest", "timeline", "compare"]
 
 import numpy as np
 from tqdm import tqdm
@@ -146,19 +148,58 @@ class VectorStore:
         return scores
 
     @staticmethod
-    def _dedupe_results(results: List[SearchResult]) -> List[SearchResult]:
-        seen: set[Tuple[str, str]] = set()
-        deduped: List[SearchResult] = []
+    def _dedupe_latest(results: List[SearchResult]) -> List[SearchResult]:
+        """同项目保留最新周报，日期相同则取分数更高者。"""
+        by_project: dict[str, SearchResult] = {}
         for result in results:
-            key = (
-                result.metadata.get("source", ""),
-                result.metadata.get("project", ""),
-            )
-            if key in seen:
+            project = result.metadata.get("project", "")
+            report_date = result.metadata.get("report_date", "")
+            if project not in by_project:
+                by_project[project] = result
                 continue
-            seen.add(key)
-            deduped.append(result)
-        return deduped
+            existing = by_project[project]
+            existing_date = existing.metadata.get("report_date", "")
+            if report_date > existing_date or (
+                report_date == existing_date and result.score > existing.score
+            ):
+                by_project[project] = result
+        return sorted(by_project.values(), key=lambda item: item.score, reverse=True)
+
+    @staticmethod
+    def _dedupe_compare(results: List[SearchResult]) -> List[SearchResult]:
+        """每月每项目保留分数最高的一条，按时间排序。"""
+        by_month_project: dict[Tuple[str, str], SearchResult] = {}
+        for result in results:
+            report_date = result.metadata.get("report_date", "")
+            year_month = report_date[:6] if len(report_date) >= 6 else "unknown"
+            project = result.metadata.get("project", "")
+            key = (year_month, project)
+            if key not in by_month_project or result.score > by_month_project[key].score:
+                by_month_project[key] = result
+        return sorted(
+            by_month_project.values(),
+            key=lambda item: item.metadata.get("report_date", ""),
+        )
+
+    @staticmethod
+    def _apply_search_mode(
+        results: List[SearchResult],
+        mode: SearchMode,
+        k: int,
+    ) -> List[SearchResult]:
+        # 先取高分候选池，再按模式重排，避免弱相关旧数据占满 timeline/compare
+        pool_size = max(k * 8, k)
+        candidates = results[:pool_size]
+
+        if mode == "timeline":
+            ordered = sorted(
+                candidates,
+                key=lambda item: item.metadata.get("report_date", ""),
+            )
+            return ordered[:k]
+        if mode == "compare":
+            return VectorStore._dedupe_compare(candidates)[:k]
+        return VectorStore._dedupe_latest(results)[:k]
 
     def query(
         self,
@@ -168,6 +209,7 @@ class VectorStore:
         year: Optional[int] = None,
         month: Optional[int] = None,
         threshold: float = SIMILARITY_THRESHOLD,
+        mode: SearchMode = "latest",
     ) -> List[SearchResult]:
         query_vector = embedding_model.get_embedding(query)
         candidate_indices = self._filter_indices(year=year, month=month)
@@ -201,5 +243,4 @@ class VectorStore:
                 )
             )
 
-        results = self._dedupe_results(results)
-        return results[:k]
+        return self._apply_search_mode(results, mode=mode, k=k)
