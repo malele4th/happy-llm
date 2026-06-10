@@ -1,20 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
 from typing import Optional
 
-from bootstrap import check_env
 from config import DEFAULT_K, STORAGE_PATH
-from models import DEFAULT_SEARCH_MODE, SearchMode
-from presentation import (
+from generation.llm import OpenAIChat
+from generation.presentation import (
     build_numbered_context,
     format_answer_with_citations,
     print_search_results,
 )
-from retrieval import RAGSession, resolve_date_filter, search
-
-logger = logging.getLogger(__name__)
+from models import DEFAULT_SEARCH_MODE, SearchMode
+from retrieval.session import RAGSession, resolve_date_filter, search
 
 
 def ask(
@@ -47,7 +44,7 @@ def ask(
             else "无"
         )
         print(f"检索模式: {mode} | 过滤: {filter_desc}")
-        print_search_results(results, verbose=False, show_scores=True)
+        print_search_results(results, show_scores=True)
 
     if not results:
         return "周报中没有找到相关内容，请尝试换个问法或指定 --year/--month。"
@@ -66,7 +63,6 @@ def interactive_chat(
     auto_date: bool = False,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
-    check_env()
     session = RAGSession(storage_path)
     print("周报 RAG 交互模式（输入 quit 退出，每轮独立检索）")
 

@@ -1,75 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import hashlib
-import json
 import logging
 import os
 import shutil
 from typing import List
 
-from bootstrap import check_env, load_index
-from config import (
-    COVER_CONTENT,
-    HEADING_MAX_LEN,
-    MANIFEST_FILE,
-    MAX_TOKEN_LEN,
-    PARSER_RULES_PATH,
-    REPORT_DATA_PATH,
-    STORAGE_PATH,
-)
-from embeddings import OpenAIEmbedding
+from config import REPORT_DATA_PATH, STORAGE_PATH
 from exceptions import NoDataError
-from index_store import IndexStore
-from parser import ReadFiles, load_parser_rules
+from indexing.manifest import compute_index_version, file_hash, load_manifest, save_manifest
+from indexing.store import IndexStore, load_index
 from models import DocumentChunk
+from parsing.reader import ReadFiles
+from providers.embeddings import OpenAIEmbedding
 
 logger = logging.getLogger(__name__)
-
-
-def compute_index_version() -> str:
-    with open(PARSER_RULES_PATH, encoding="utf-8") as handle:
-        rules_hash = hashlib.md5(handle.read().encode()).hexdigest()[:8]
-    payload = "|".join([
-        str(MAX_TOKEN_LEN),
-        str(COVER_CONTENT),
-        str(HEADING_MAX_LEN),
-        rules_hash,
-    ])
-    return hashlib.md5(payload.encode()).hexdigest()[:12]
-
-
-def _file_hash(file_path: str) -> str:
-    digest = hashlib.md5()
-    with open(file_path, "rb") as handle:
-        for chunk in iter(lambda: handle.read(8192), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
-def _manifest_path(storage_path: str) -> str:
-    return os.path.join(storage_path, MANIFEST_FILE)
-
-
-def _load_manifest(storage_path: str) -> dict:
-    path = _manifest_path(storage_path)
-    if not os.path.exists(path):
-        return {"files": {}, "index_version": ""}
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def _save_manifest(storage_path: str, reader: ReadFiles) -> None:
-    manifest = {
-        "index_version": compute_index_version(),
-        "parser_rules": load_parser_rules(),
-        "files": {
-            os.path.relpath(file_path, reader.data_path): {"hash": _file_hash(file_path)}
-            for file_path in reader.file_list
-        },
-    }
-    with open(_manifest_path(storage_path), "w", encoding="utf-8") as handle:
-        json.dump(manifest, handle, ensure_ascii=False, indent=2)
 
 
 def _embed_chunks(embedding: OpenAIEmbedding, chunks: List[DocumentChunk]) -> List[List[float]]:
@@ -80,13 +25,12 @@ def _embed_chunks(embedding: OpenAIEmbedding, chunks: List[DocumentChunk]) -> Li
 
 def _incremental_build(reader: ReadFiles, storage_path: str) -> IndexStore:
     store = load_index(storage_path)
-    manifest = _load_manifest(storage_path)
+    manifest = load_manifest(storage_path)
     old_files = manifest.get("files", {})
-    current_version = compute_index_version()
-    version_changed = manifest.get("index_version") != current_version
+    version_changed = manifest.get("index_version") != compute_index_version()
 
     current_files = {
-        os.path.relpath(file_path, reader.data_path): _file_hash(file_path)
+        os.path.relpath(file_path, reader.data_path): file_hash(file_path)
         for file_path in reader.file_list
     }
 
@@ -96,16 +40,15 @@ def _incremental_build(reader: ReadFiles, storage_path: str) -> IndexStore:
     else:
         sources_to_update = {
             rel
-            for rel, file_hash in current_files.items()
-            if rel not in old_files or old_files[rel].get("hash") != file_hash
+            for rel, digest in current_files.items()
+            if rel not in old_files or old_files[rel].get("hash") != digest
         }
     sources_to_remove |= sources_to_update
 
-    kept_records = [
+    store.records = [
         record for record in store.records
         if record.metadata.source not in sources_to_remove
     ]
-    store.records = kept_records
     store._matrix = None
 
     new_chunks: List[DocumentChunk] = []
@@ -116,11 +59,10 @@ def _incremental_build(reader: ReadFiles, storage_path: str) -> IndexStore:
 
     if new_chunks:
         embedding = OpenAIEmbedding()
-        new_vectors = _embed_chunks(embedding, new_chunks)
-        store.append_records(new_chunks, new_vectors)
+        store.append_records(new_chunks, _embed_chunks(embedding, new_chunks))
 
     store.persist(path=storage_path)
-    _save_manifest(storage_path, reader)
+    save_manifest(storage_path, reader)
 
     reason = "切块/解析规则变更，" if version_changed else ""
     logger.info(
@@ -138,8 +80,6 @@ def build_index(
     storage_path: str = STORAGE_PATH,
     force: bool = False,
 ) -> IndexStore:
-    check_env()
-
     reader = ReadFiles(data_path)
     if not reader.file_list:
         raise NoDataError(f"在 {data_path} 下未找到 docx 文件")
@@ -163,6 +103,6 @@ def build_index(
     embedding = OpenAIEmbedding()
     store.set_vectors(_embed_chunks(embedding, chunks))
     store.persist(path=storage_path)
-    _save_manifest(storage_path, reader)
+    save_manifest(storage_path, reader)
     logger.info("向量库已保存到 %s", storage_path)
     return store

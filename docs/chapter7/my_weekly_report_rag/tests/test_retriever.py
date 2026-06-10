@@ -5,9 +5,9 @@ import unittest
 
 import numpy as np
 
-from index_store import IndexStore
-from models import ChunkMetadata, IndexRecord
-from retriever import Retriever
+from indexing.store import IndexRecord, IndexStore
+from models import ChunkMetadata
+from retrieval.retriever import Retriever
 
 
 class _MockEmbedding:
@@ -21,25 +21,30 @@ class _MockEmbedding:
 
 
 class RetrieverTestCase(unittest.TestCase):
+    def _record(self, text: str, metadata: ChunkMetadata, vector) -> IndexRecord:
+        record = IndexRecord(text=text, metadata=metadata)
+        record.attach_vector(np.array(vector, dtype=np.float32))
+        return record
+
     def setUp(self) -> None:
         records = [
-            IndexRecord(
-                text="[meta]\ncatchii 家族房 12/11 评审",
-                metadata=ChunkMetadata(
+            self._record(
+                "[meta]\ncatchii 家族房 12/11 评审",
+                ChunkMetadata(
                     source="2025/Q4/a.docx",
                     report_date="20251211",
                     project="catchii房间需求",
                 ),
-                vector=np.array([1.0, 0.0], dtype=np.float32),
+                [1.0, 0.0],
             ),
-            IndexRecord(
-                text="[meta]\nrank 模型优化",
-                metadata=ChunkMetadata(
+            self._record(
+                "[meta]\nrank 模型优化",
+                ChunkMetadata(
                     source="2025/Q4/b.docx",
                     report_date="20251218",
                     project="rank模型",
                 ),
-                vector=np.array([0.0, 1.0], dtype=np.float32),
+                [0.0, 1.0],
             ),
         ]
         self.store = IndexStore(records)

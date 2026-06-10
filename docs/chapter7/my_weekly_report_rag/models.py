@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import asdict, dataclass
-from typing import Literal, Optional, Tuple
-
-import numpy as np
+from typing import Literal, Tuple
 
 from utils import normalize_report_date
 
@@ -60,19 +58,6 @@ class ChunkMetadata:
 class DocumentChunk:
     text: str
     metadata: ChunkMetadata
-
-
-@dataclass
-class IndexRecord:
-    text: str
-    metadata: ChunkMetadata
-    vector: Optional[np.ndarray] = None
-
-    def to_storage_dict(self) -> dict:
-        return {
-            "text": self.text,
-            "metadata": self.metadata.to_dict(),
-        }
 
 
 @dataclass

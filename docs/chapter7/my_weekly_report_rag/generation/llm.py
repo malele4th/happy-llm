@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from clients import get_openai_client
 from config import CHAT_MODEL
+from providers.openai_client import get_openai_client
 
 WEEKLY_REPORT_PROMPT = """
 你是工作周报助手。根据以下周报片段回答用户问题。

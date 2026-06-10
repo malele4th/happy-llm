@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
+import logging
 import os
 from pathlib import Path
 
@@ -10,7 +10,7 @@ from dotenv import find_dotenv, load_dotenv
 _ = load_dotenv(find_dotenv())
 
 _BASE_DIR = Path(__file__).resolve().parent
-_RULES_PATH = _BASE_DIR / "parser_rules.json"
+PARSER_RULES_PATH = str(_BASE_DIR / "parser_rules.json")
 
 REPORT_DATA_PATH = os.getenv(
     "REPORT_DATA_PATH",
@@ -23,7 +23,6 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "Qwen/Qwen2.5-32B-Instruct")
 MAX_TOKEN_LEN = 600
 COVER_CONTENT = 150
 DEFAULT_K = 5
-HEADING_MAX_LEN = 40
 SEARCH_CANDIDATE_POOL_FACTOR = 8
 
 MODE_THRESHOLDS = {
@@ -49,14 +48,13 @@ BGE_QUERY_PREFIX = os.getenv(
 BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 
 MANIFEST_FILE = "manifest.json"
-PARSER_RULES_PATH = str(_RULES_PATH)
 
 
-def _load_parser_rules() -> dict:
-    with open(_RULES_PATH, encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-_PARSER_RULES = _load_parser_rules()
-PARSER_PROJECT_HINTS = _PARSER_RULES.get("parser_project_hints", [])
-PARSER_SECTION_PREFIXES = _PARSER_RULES.get("section_prefixes", {})
+def setup_logging() -> None:
+    level_name = os.getenv("LOG_LEVEL", "INFO").upper()
+    level = getattr(logging, level_name, logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )

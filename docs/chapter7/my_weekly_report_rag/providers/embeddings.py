@@ -5,7 +5,6 @@ import logging
 import time
 from typing import List, Literal, Optional, Protocol
 
-from clients import get_openai_client
 from config import (
     BGE_PASSAGE_PREFIX,
     BGE_QUERY_PREFIX,
@@ -13,7 +12,8 @@ from config import (
     EMBEDDING_MAX_RETRIES,
     EMBEDDING_MODEL,
 )
-from embedding_cache import EmbeddingCache
+from providers.embedding_cache import EmbeddingCache
+from providers.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 EmbeddingKind = Literal["query", "passage"]
@@ -22,11 +22,7 @@ EmbeddingKind = Literal["query", "passage"]
 class EmbeddingProvider(Protocol):
     def get_embedding(self, text: str, kind: EmbeddingKind = "passage") -> List[float]: ...
 
-    def get_embeddings(
-        self,
-        texts: List[str],
-        kind: EmbeddingKind = "passage",
-    ) -> List[List[float]]: ...
+    def get_embeddings(self, texts: List[str], kind: EmbeddingKind = "passage") -> List[List[float]]: ...
 
 
 class OpenAIEmbedding:
@@ -44,11 +40,7 @@ class OpenAIEmbedding:
     def get_embedding(self, text: str, kind: EmbeddingKind = "passage") -> List[float]:
         return self.get_embeddings([text], kind=kind)[0]
 
-    def get_embeddings(
-        self,
-        texts: List[str],
-        kind: EmbeddingKind = "passage",
-    ) -> List[List[float]]:
+    def get_embeddings(self, texts: List[str], kind: EmbeddingKind = "passage") -> List[List[float]]:
         if not texts:
             return []
 
@@ -95,7 +87,12 @@ class OpenAIEmbedding:
                 return [item.embedding for item in response.data]
             except Exception as exc:
                 last_error = exc
-                logger.warning("embedding 请求失败，重试 %s/%s: %s", attempt + 1, EMBEDDING_MAX_RETRIES, exc)
+                logger.warning(
+                    "embedding 请求失败，重试 %s/%s: %s",
+                    attempt + 1,
+                    EMBEDDING_MAX_RETRIES,
+                    exc,
+                )
                 if attempt < EMBEDDING_MAX_RETRIES - 1:
                     time.sleep(2 ** attempt)
         raise last_error  # type: ignore[misc]

@@ -3,13 +3,12 @@
 
 from typing import List, Optional, Tuple
 
-from bootstrap import check_env, load_index
 from config import DEFAULT_K, STORAGE_PATH
-from embeddings import OpenAIEmbedding
-from index_store import IndexStore
-from llm import OpenAIChat
+from indexing.store import IndexStore, load_index
 from models import DEFAULT_SEARCH_MODE, SearchMode, SearchResult
-from retriever import Retriever
+from providers.embeddings import OpenAIEmbedding
+from generation.llm import OpenAIChat
+from retrieval.retriever import Retriever
 from utils import parse_date_filter
 
 
@@ -17,9 +16,8 @@ class RAGSession:
     """复用索引、检索器与模型客户端。"""
 
     def __init__(self, storage_path: str = STORAGE_PATH) -> None:
-        check_env()
         self.storage_path = storage_path
-        self.store = load_index(storage_path)
+        self.store: IndexStore = load_index(storage_path)
         self.retriever = Retriever(self.store)
         self.embedding = OpenAIEmbedding()
         self.chat = OpenAIChat()
@@ -47,12 +45,10 @@ def search(
     session: Optional[RAGSession] = None,
     storage_path: str = STORAGE_PATH,
 ) -> List[SearchResult]:
-    if session is None:
-        session = RAGSession(storage_path)
-
-    return session.retriever.query(
+    active_session = session or RAGSession(storage_path)
+    return active_session.retriever.query(
         question,
-        embedding_model=session.embedding,
+        embedding_model=active_session.embedding,
         k=k,
         year=year,
         month=month,

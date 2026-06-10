@@ -1,29 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
-import os
 import re
 from typing import List, Optional, Tuple
 
 from docx import Document
 
-from chunker import count_tokens, get_chunk
-from config import HEADING_MAX_LEN, MAX_TOKEN_LEN, PARSER_PROJECT_HINTS, PARSER_RULES_PATH, PARSER_SECTION_PREFIXES
+from config import MAX_TOKEN_LEN
 from models import ChunkMetadata, DocumentChunk
+from parsing.chunker import count_tokens, get_chunk
+from parsing.rules import heading_max_len, load_parser_rules, parser_project_hints, section_prefixes
 from utils import (
     format_report_date,
     normalize_report_date,
     parse_author_from_path,
     parse_quarter_from_path,
-    parse_report_date_from_path,
-    parse_report_date_from_text,
 )
-
-
-def load_parser_rules() -> dict:
-    with open(PARSER_RULES_PATH, encoding="utf-8") as handle:
-        return json.load(handle)
 
 
 def is_report_title(line: str, rules: dict) -> bool:
@@ -40,7 +32,7 @@ def is_heading_style(style_name: Optional[str], rules: dict) -> bool:
 
 def matches_project_hint(line: str) -> bool:
     lower = line.lower()
-    return any(hint.lower() in lower for hint in PARSER_PROJECT_HINTS)
+    return any(hint.lower() in lower for hint in parser_project_hints())
 
 
 def is_section_heading(
@@ -50,6 +42,7 @@ def is_section_heading(
     rules: Optional[dict] = None,
 ) -> bool:
     rules = rules or load_parser_rules()
+    max_len = heading_max_len()
     line = line.strip()
     if not line or line.startswith("http"):
         return False
@@ -59,22 +52,22 @@ def is_section_heading(
         return True
     if rules.get("bracket_heading") and re.match(r"^【.+】$", line):
         return True
-    if matches_project_hint(line) and len(line) <= HEADING_MAX_LEN:
+    if matches_project_hint(line) and len(line) <= max_len:
         return True
-    if len(line) > HEADING_MAX_LEN:
+    if len(line) > max_len:
         return False
     endings = tuple(rules.get("sentence_endings", []))
     if line.endswith(endings) and len(line) > 15:
         return False
     if re.match(r"^\d{1,2}月\d{1,2}日", line):
         return False
-    for prefixes in PARSER_SECTION_PREFIXES.values():
+    for prefixes in section_prefixes().values():
         if any(line.lower().startswith(prefix.lower()) for prefix in prefixes):
             return False
-    if len(line) <= HEADING_MAX_LEN:
+    if len(line) <= max_len:
         if next_line is None:
             return len(line) <= 20
-        if len(next_line) <= HEADING_MAX_LEN and not next_line.endswith("。"):
+        if len(next_line) <= max_len and not next_line.endswith("。"):
             return True
         if len(next_line) > len(line) + 10 or next_line.endswith("。"):
             return True
@@ -82,9 +75,10 @@ def is_section_heading(
 
 
 def infer_section_type(body_lines: List[str]) -> str:
+    prefixes_map = section_prefixes()
     for line in body_lines[:5]:
         stripped = line.strip()
-        for section_type, prefixes in PARSER_SECTION_PREFIXES.items():
+        for section_type, prefixes in prefixes_map.items():
             if any(stripped.startswith(prefix) for prefix in prefixes):
                 return section_type
     return "body"
@@ -143,7 +137,12 @@ def split_docx_into_sections(file_path: str) -> List[Tuple[str, List[str]]]:
     return sections
 
 
-def sections_to_chunks(file_path: str, rel_path: str, report_date: str, sections: List[Tuple[str, List[str]]]) -> List[DocumentChunk]:
+def sections_to_chunks(
+    file_path: str,
+    rel_path: str,
+    report_date: str,
+    sections: List[Tuple[str, List[str]]],
+) -> List[DocumentChunk]:
     chunks: List[DocumentChunk] = []
     author = parse_author_from_path(file_path)
     quarter = parse_quarter_from_path(file_path)
@@ -176,42 +175,3 @@ def sections_to_chunks(file_path: str, rel_path: str, report_date: str, sections
                 )
                 chunks.append(DocumentChunk(part, metadata))
     return chunks
-
-
-class ReadFiles:
-    def __init__(self, path: str) -> None:
-        self.data_path = os.path.abspath(path)
-        self.file_list = self._scan_files()
-
-    def _scan_files(self) -> List[str]:
-        file_list = []
-        for filepath, _, filenames in os.walk(self.data_path):
-            for filename in filenames:
-                if filename.startswith("~$") or filename == "tmp.docx":
-                    continue
-                if filename.endswith(".docx"):
-                    file_list.append(os.path.join(filepath, filename))
-        return sorted(file_list)
-
-    def _resolve_report_date(
-        self,
-        file_path: str,
-        sections: List[Tuple[str, List[str]]],
-    ) -> str:
-        report_date = parse_report_date_from_path(file_path)
-        if not report_date and sections:
-            first_line = sections[0][1][0] if sections[0][1] else sections[0][0]
-            report_date = parse_report_date_from_text(first_line)
-        return report_date
-
-    def get_chunks_for_file(self, file_path: str) -> List[DocumentChunk]:
-        rel_path = os.path.relpath(file_path, self.data_path)
-        sections = split_docx_into_sections(file_path)
-        report_date = self._resolve_report_date(file_path, sections)
-        return sections_to_chunks(file_path, rel_path, report_date, sections)
-
-    def get_chunks(self) -> List[DocumentChunk]:
-        chunks: List[DocumentChunk] = []
-        for file_path in self.file_list:
-            chunks.extend(self.get_chunks_for_file(file_path))
-        return chunks
