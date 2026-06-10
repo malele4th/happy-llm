@@ -7,7 +7,7 @@ import logging
 import sys
 
 from app.chat import ask, interactive_chat
-from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH, check_env, cleanup_storage_tmp, setup_logging
+from config import DEFAULT_K, INDEX_PATH, REPORT_DATA_PATH, check_env, cleanup_index_tmp, setup_logging
 from exceptions import WeeklyReportRagError
 from generation.output import print_search_results
 from indexing.pipeline import build_index
@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     setup_logging()
-    cleanup_storage_tmp()
+    cleanup_index_tmp()
     check_env()
 
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
-    parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 storage）")
+    parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 data 目录）")
     parser.add_argument("--query", type=str, help="单次问答")
     parser.add_argument("--search", type=str, help="仅检索，不调用 LLM（调试用）")
     parser.add_argument("--chat", action="store_true", help="交互式问答")
@@ -45,17 +45,17 @@ def main() -> None:
         help="从问题文本自动解析年月并过滤（默认关闭）",
     )
     parser.add_argument("--data-path", type=str, default=REPORT_DATA_PATH, help="周报原始数据路径")
-    parser.add_argument("--storage", type=str, default=STORAGE_PATH, help="向量库保存路径")
+    parser.add_argument("--index", type=str, default=INDEX_PATH, help="向量索引目录（默认 ./data）")
     args = parser.parse_args()
 
     try:
         if args.build:
-            build_index(args.data_path, args.storage, force=args.force)
+            build_index(args.data_path, args.index, force=args.force)
         elif args.search:
             filter_year, filter_month = resolve_date_filter(
                 args.search, args.year, args.month, args.auto_date
             )
-            session = RAGSession(args.storage)
+            session = RAGSession(args.index)
             results = search(
                 args.search,
                 k=args.k,
@@ -72,11 +72,11 @@ def main() -> None:
                 show_scores=args.debug,
             )
         elif args.query:
-            session = RAGSession(args.storage)
+            session = RAGSession(args.index)
             print(
                 ask(
                     args.query,
-                    args.storage,
+                    args.index,
                     k=args.k,
                     debug=args.debug,
                     year=args.year,
@@ -88,7 +88,7 @@ def main() -> None:
             )
         elif args.chat:
             interactive_chat(
-                args.storage,
+                args.index,
                 k=args.k,
                 debug=args.debug,
                 year=args.year,

@@ -3,7 +3,7 @@
 
 from typing import List, Optional, Tuple
 
-from config import DEFAULT_K, STORAGE_PATH
+from config import DEFAULT_K, INDEX_PATH
 from generation.llm import OpenAIChat
 from indexing.store import IndexStore, load_index
 from models import DEFAULT_SEARCH_MODE, SearchMode, SearchResult
@@ -15,9 +15,9 @@ from utils import parse_date_filter
 class RAGSession:
     """复用索引、检索引擎与模型客户端。"""
 
-    def __init__(self, storage_path: str = STORAGE_PATH) -> None:
-        self.storage_path = storage_path
-        self.store: IndexStore = load_index(storage_path)
+    def __init__(self, index_path: str = INDEX_PATH) -> None:
+        self.index_path = index_path
+        self.store: IndexStore = load_index(index_path)
         self.search_engine = SearchEngine(self.store)
         self.embedding = OpenAIEmbedding()
         self.chat = OpenAIChat()
@@ -43,9 +43,9 @@ def search(
     month: Optional[int] = None,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
-    storage_path: str = STORAGE_PATH,
+    index_path: str = INDEX_PATH,
 ) -> List[SearchResult]:
-    active_session = session or RAGSession(storage_path)
+    active_session = session or RAGSession(index_path)
     return active_session.search_engine.query(
         question,
         embedding_model=active_session.embedding,

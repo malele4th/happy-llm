@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from config import STORAGE_PATH
+from config import INDEX_PATH, INDEX_TMP_DIR
 from exceptions import StorageCorruptError, StorageNotFoundError
 from indexing.record import IndexRecord
 from models import ChunkMetadata, DocumentChunk
@@ -17,13 +17,13 @@ from models import ChunkMetadata, DocumentChunk
 logger = logging.getLogger(__name__)
 
 
-def load_index(storage_path: str = STORAGE_PATH) -> "IndexStore":
-    if not IndexStore.exists(storage_path):
+def load_index(index_path: str = INDEX_PATH) -> "IndexStore":
+    if not IndexStore.exists(index_path):
         raise StorageNotFoundError(
-            "storage 不存在或不完整，请先运行: python main.py --build"
+            "索引目录不存在或不完整，请先运行: python main.py --build"
         )
     store = IndexStore()
-    store.load_from_disk(storage_path)
+    store.load_from_disk(index_path)
     return store
 
 
@@ -42,10 +42,10 @@ class IndexStore:
         return self._matrix
 
     @classmethod
-    def exists(cls, storage_path: str) -> bool:
+    def exists(cls, index_path: str) -> bool:
         return (
-            os.path.exists(os.path.join(storage_path, "records.json"))
-            or os.path.exists(os.path.join(storage_path, "document.json"))
+            os.path.exists(os.path.join(index_path, "records.json"))
+            or os.path.exists(os.path.join(index_path, "document.json"))
         )
 
     @classmethod
@@ -68,9 +68,9 @@ class IndexStore:
             self.records.append(record)
         self._matrix = None
 
-    def persist(self, path: str = STORAGE_PATH) -> None:
+    def persist(self, path: str = INDEX_PATH) -> None:
         parent_dir = os.path.dirname(os.path.abspath(path)) or "."
-        tmp_path = os.path.join(parent_dir, ".storage_tmp")
+        tmp_path = os.path.join(parent_dir, INDEX_TMP_DIR)
         if os.path.exists(tmp_path):
             shutil.rmtree(tmp_path, ignore_errors=True)
         os.makedirs(tmp_path, exist_ok=True)
@@ -89,7 +89,7 @@ class IndexStore:
         os.rename(tmp_path, path)
         logger.info("索引已保存到 %s (%s 条记录)", path, len(self.records))
 
-    def load_from_disk(self, path: str = STORAGE_PATH) -> None:
+    def load_from_disk(self, path: str = INDEX_PATH) -> None:
         records_path = os.path.join(path, "records.json")
         if os.path.exists(records_path):
             self._load_new_format(path)

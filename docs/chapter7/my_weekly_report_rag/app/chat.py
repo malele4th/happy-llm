@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from config import DEFAULT_K, STORAGE_PATH
+from config import DEFAULT_K, INDEX_PATH
 from generation.output import (
     build_numbered_context,
     format_answer_with_citations,
@@ -15,7 +15,7 @@ from retrieval.session import RAGSession, resolve_date_filter, search
 
 def ask(
     question: str,
-    storage_path: str = STORAGE_PATH,
+    index_path: str = INDEX_PATH,
     k: int = DEFAULT_K,
     debug: bool = False,
     year: Optional[int] = None,
@@ -24,7 +24,7 @@ def ask(
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> str:
-    active_session = session or RAGSession(storage_path)
+    active_session = session or RAGSession(index_path)
     filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
 
     results = search(
@@ -54,7 +54,7 @@ def ask(
 
 
 def interactive_chat(
-    storage_path: str = STORAGE_PATH,
+    index_path: str = INDEX_PATH,
     k: int = DEFAULT_K,
     debug: bool = False,
     year: Optional[int] = None,
@@ -62,7 +62,7 @@ def interactive_chat(
     auto_date: bool = False,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
-    session = RAGSession(storage_path)
+    session = RAGSession(index_path)
     print("周报 RAG 交互模式（输入 quit 退出，每轮独立检索）")
 
     while True:

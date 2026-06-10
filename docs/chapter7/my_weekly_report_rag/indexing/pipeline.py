@@ -6,7 +6,7 @@ import os
 import shutil
 from typing import List
 
-from config import REPORT_DATA_PATH, STORAGE_PATH
+from config import INDEX_PATH, REPORT_DATA_PATH
 from exceptions import NoDataError
 from indexing.manifest import compute_index_version, file_hash, load_manifest, save_manifest
 from indexing.store import IndexStore, load_index
@@ -23,9 +23,9 @@ def _embed_chunks(embedding: OpenAIEmbedding, chunks: List[DocumentChunk]) -> Li
     return embedding.get_embeddings([chunk.text for chunk in chunks], kind="passage")
 
 
-def _incremental_build(reader: DocxReportReader, storage_path: str) -> IndexStore:
-    store = load_index(storage_path)
-    manifest = load_manifest(storage_path)
+def _incremental_build(reader: DocxReportReader, index_path: str) -> IndexStore:
+    store = load_index(index_path)
+    manifest = load_manifest(index_path)
     old_files = manifest.get("files", {})
     version_changed = manifest.get("index_version") != compute_index_version()
 
@@ -61,8 +61,8 @@ def _incremental_build(reader: DocxReportReader, storage_path: str) -> IndexStor
         embedding = OpenAIEmbedding()
         store.append_records(new_chunks, _embed_chunks(embedding, new_chunks))
 
-    store.persist(path=storage_path)
-    save_manifest(storage_path, reader)
+    store.persist(path=index_path)
+    save_manifest(index_path, reader)
 
     reason = "切块/解析规则变更，" if version_changed else ""
     logger.info(
@@ -77,23 +77,23 @@ def _incremental_build(reader: DocxReportReader, storage_path: str) -> IndexStor
 
 def build_index(
     data_path: str = REPORT_DATA_PATH,
-    storage_path: str = STORAGE_PATH,
+    index_path: str = INDEX_PATH,
     force: bool = False,
 ) -> IndexStore:
     reader = DocxReportReader(data_path)
     if not reader.file_list:
         raise NoDataError(f"在 {data_path} 下未找到 docx 文件")
 
-    if os.path.exists(storage_path) and not force:
-        return _incremental_build(reader, storage_path)
+    if os.path.exists(index_path) and not force:
+        return _incremental_build(reader, index_path)
 
-    if force and os.path.exists(storage_path):
-        backup_path = f"{storage_path}.backup"
+    if force and os.path.exists(index_path):
+        backup_path = f"{index_path}.backup"
         if os.path.exists(backup_path):
             shutil.rmtree(backup_path)
-        shutil.copytree(storage_path, backup_path)
+        shutil.copytree(index_path, backup_path)
         logger.info("已备份旧索引到 %s", backup_path)
-        shutil.rmtree(storage_path)
+        shutil.rmtree(index_path)
 
     logger.info("扫描到 %s 个 docx 文件", len(reader.file_list))
     chunks = reader.get_chunks()
@@ -102,7 +102,7 @@ def build_index(
     store = IndexStore.from_chunks(chunks)
     embedding = OpenAIEmbedding()
     store.set_vectors(_embed_chunks(embedding, chunks))
-    store.persist(path=storage_path)
-    save_manifest(storage_path, reader)
-    logger.info("向量库已保存到 %s", storage_path)
+    store.persist(path=index_path)
+    save_manifest(index_path, reader)
+    logger.info("向量索引已保存到 %s", index_path)
     return store

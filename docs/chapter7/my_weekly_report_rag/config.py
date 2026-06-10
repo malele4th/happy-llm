@@ -4,6 +4,7 @@
 import logging
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
@@ -14,12 +15,13 @@ _ = load_dotenv(find_dotenv())
 
 _BASE_DIR = Path(__file__).resolve().parent
 PARSER_RULES_PATH = str(_BASE_DIR / "parsing" / "parser_rules.json")
+LOG_DIR = _BASE_DIR / "log"
+INDEX_PATH = os.getenv("INDEX_PATH") or os.getenv("REPORT_STORAGE_PATH", "./data")
 
 REPORT_DATA_PATH = os.getenv(
     "REPORT_DATA_PATH",
     "/Users/bigo/Desktop/bigo/bigo工作周报",
 )
-STORAGE_PATH = os.getenv("REPORT_STORAGE_PATH", "./storage")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "Qwen/Qwen2.5-32B-Instruct")
 
@@ -51,16 +53,30 @@ BGE_QUERY_PREFIX = os.getenv(
 BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 
 MANIFEST_FILE = "manifest.json"
+INDEX_TMP_DIR = ".index_tmp"
 
 
 def setup_logging() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
     level_name = os.getenv("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
+    formatter = logging.Formatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    root = logging.getLogger()
+    root.setLevel(level)
+    root.handlers.clear()
+
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    root.addHandler(console)
+
+    log_file = LOG_DIR / f"app_{datetime.now():%Y%m%d}.log"
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    root.addHandler(file_handler)
 
 
 def check_env() -> None:
@@ -68,9 +84,9 @@ def check_env() -> None:
         raise EnvConfigError("请在 .env 中配置 OPENAI_API_KEY 和 OPENAI_BASE_URL")
 
 
-def cleanup_storage_tmp(base_dir: str | None = None) -> None:
+def cleanup_index_tmp(base_dir: str | None = None) -> None:
     if base_dir is None:
-        base_dir = os.path.dirname(os.path.abspath(STORAGE_PATH)) or "."
-    tmp_path = os.path.join(base_dir, ".storage_tmp")
+        base_dir = os.path.dirname(os.path.abspath(INDEX_PATH)) or "."
+    tmp_path = os.path.join(base_dir, INDEX_TMP_DIR)
     if os.path.isdir(tmp_path):
         shutil.rmtree(tmp_path, ignore_errors=True)

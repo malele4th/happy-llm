@@ -30,19 +30,19 @@ def file_hash(file_path: str) -> str:
     return digest.hexdigest()
 
 
-def manifest_path(storage_path: str) -> str:
-    return os.path.join(storage_path, MANIFEST_FILE)
+def manifest_path(index_path: str) -> str:
+    return os.path.join(index_path, MANIFEST_FILE)
 
 
-def load_manifest(storage_path: str) -> dict:
-    path = manifest_path(storage_path)
+def load_manifest(index_path: str) -> dict:
+    path = manifest_path(index_path)
     if not os.path.exists(path):
         return {"files": {}, "index_version": ""}
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def save_manifest(storage_path: str, reader: DocxReportReader) -> None:
+def save_manifest(index_path: str, reader: DocxReportReader) -> None:
     manifest = {
         "index_version": compute_index_version(),
         "parser_rules": load_parser_rules(),
@@ -51,5 +51,5 @@ def save_manifest(storage_path: str, reader: DocxReportReader) -> None:
             for file_path in reader.file_list
         },
     }
-    with open(manifest_path(storage_path), "w", encoding="utf-8") as handle:
+    with open(manifest_path(index_path), "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=2)
