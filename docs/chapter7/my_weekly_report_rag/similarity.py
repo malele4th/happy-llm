@@ -20,13 +20,18 @@ def cosine_similarity(vector1: List[float], vector2: List[float]) -> float:
 
 def batch_cosine_similarity(
     query_vector: List[float],
-    candidate_vectors: List[List[float]],
+    candidate_vectors,
 ) -> np.ndarray:
-    if not candidate_vectors:
-        return np.array([], dtype=np.float32)
+    if isinstance(candidate_vectors, np.ndarray):
+        matrix = candidate_vectors.astype(np.float32)
+        if matrix.size == 0:
+            return np.array([], dtype=np.float32)
+    else:
+        if not candidate_vectors:
+            return np.array([], dtype=np.float32)
+        matrix = np.array(candidate_vectors, dtype=np.float32)
 
     query = np.array(query_vector, dtype=np.float32)
-    matrix = np.array(candidate_vectors, dtype=np.float32)
 
     if not np.all(np.isfinite(query)) or not np.all(np.isfinite(matrix)):
         return np.array(

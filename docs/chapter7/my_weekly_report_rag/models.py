@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import asdict, dataclass
-from typing import Literal, Tuple
+from typing import Literal, Optional, Tuple
+
+import numpy as np
+
+from utils import normalize_report_date
 
 SearchMode = Literal["latest", "timeline", "compare"]
 SEARCH_MODES: Tuple[SearchMode, ...] = ("latest", "timeline", "compare")
@@ -15,6 +19,12 @@ class ChunkMetadata:
     report_date: str = ""
     project: str = "综合"
     chunk_index: int = 0
+    author: str = ""
+    quarter: str = ""
+    section_type: str = "body"
+
+    def __post_init__(self) -> None:
+        self.report_date = normalize_report_date(self.report_date)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -26,6 +36,9 @@ class ChunkMetadata:
             report_date=data.get("report_date", ""),
             project=data.get("project", "综合"),
             chunk_index=int(data.get("chunk_index", 0)),
+            author=data.get("author", ""),
+            quarter=data.get("quarter", ""),
+            section_type=data.get("section_type", "body"),
         )
 
     def year_month(self) -> str:
@@ -36,6 +49,12 @@ class ChunkMetadata:
     def identity_key(self) -> Tuple[str, str, int]:
         return (self.source, self.project, self.chunk_index)
 
+    def compare_key(self) -> Tuple[str, str]:
+        return (self.year_month(), self.project)
+
+    def sort_key(self) -> Tuple[str, int]:
+        return (self.report_date, self.chunk_index)
+
 
 @dataclass
 class DocumentChunk:
@@ -44,7 +63,22 @@ class DocumentChunk:
 
 
 @dataclass
+class IndexRecord:
+    text: str
+    metadata: ChunkMetadata
+    vector: Optional[np.ndarray] = None
+
+    def to_storage_dict(self) -> dict:
+        return {
+            "text": self.text,
+            "metadata": self.metadata.to_dict(),
+        }
+
+
+@dataclass
 class SearchResult:
     text: str
     score: float
     metadata: ChunkMetadata
+    vector_score: float = 0.0
+    keyword_score: float = 0.0

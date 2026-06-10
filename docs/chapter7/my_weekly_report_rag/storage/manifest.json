@@ -1,5 +1,52 @@
 {
-  "index_version": "a1f8c62a3719",
+  "index_version": "a0203206e6b1",
+  "parser_rules": {
+    "heading_max_len": 40,
+    "report_title_contains": "工作周报",
+    "heading_style_keywords": [
+      "heading",
+      "标题",
+      "Heading"
+    ],
+    "bracket_heading": true,
+    "section_prefixes": {
+      "background": [
+        "背景"
+      ],
+      "progress": [
+        "进展"
+      ],
+      "plan": [
+        "下周计划",
+        "下周工作"
+      ],
+      "summary": [
+        "总结",
+        "summary"
+      ]
+    },
+    "parser_project_hints": [
+      "catchii",
+      "rank",
+      "家族房",
+      "bge",
+      "imo",
+      "helloyo",
+      "likee",
+      "bigo"
+    ],
+    "sentence_endings": [
+      "。",
+      "；",
+      "，",
+      "！",
+      "？",
+      "）",
+      ")",
+      ":",
+      "："
+    ]
+  },
   "files": {
     "2022/2022Q2/工作周报-20220609-杨甲东.docx": {
       "hash": "0c8144d0959b23aa16021c4c9ac64032"

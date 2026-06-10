@@ -3,18 +3,26 @@
 """周报 RAG 系统 CLI 入口。"""
 
 import argparse
+import logging
 import sys
 
+from bootstrap import cleanup_storage_tmp
 from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH
 from exceptions import WeeklyReportRagError
 from indexing import build_index
+from log_config import setup_logging
 from models import DEFAULT_SEARCH_MODE, SEARCH_MODES
 from presentation import print_search_results
-from retrieval import search
+from retrieval import resolve_date_filter, search
 from service import ask, interactive_chat
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
+    setup_logging()
+    cleanup_storage_tmp()
+
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
     parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 storage）")
@@ -45,18 +53,24 @@ def main() -> None:
         if args.build:
             build_index(args.data_path, args.storage, force=args.force)
         elif args.search:
+            filter_year, filter_month = resolve_date_filter(
+                args.search, args.year, args.month, args.auto_date
+            )
             results = search(
                 args.search,
-                args.storage,
                 k=args.k,
-                year=args.year,
-                month=args.month,
-                auto_date=args.auto_date,
+                year=filter_year,
+                month=filter_month,
                 mode=args.mode,
+                storage_path=args.storage,
             )
             if args.debug:
                 print(f"检索模式: {args.mode}")
-            print_search_results(results, verbose=args.verbose)
+            print_search_results(
+                results,
+                verbose=args.verbose,
+                show_scores=args.debug,
+            )
         elif args.query:
             print(
                 ask(
@@ -83,6 +97,7 @@ def main() -> None:
         else:
             parser.print_help()
     except WeeklyReportRagError as exc:
+        logger.error("%s", exc)
         print(f"错误: {exc}")
         sys.exit(1)
 

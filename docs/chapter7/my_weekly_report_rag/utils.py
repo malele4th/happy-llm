@@ -3,30 +3,65 @@
 
 import os
 import re
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 
 def parse_report_date_from_path(file_path: str) -> str:
     match = re.search(r"(\d{8})", os.path.basename(file_path))
-    return match.group(1) if match else ""
+    return normalize_report_date(match.group(1) if match else "")
 
 
 def parse_report_date_from_text(text: str) -> str:
     match = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
     if match:
-        return f"{match.group(1)}{match.group(2)}{match.group(3)}"
+        return normalize_report_date(
+            f"{match.group(1)}{match.group(2)}{match.group(3)}"
+        )
     match = re.search(r"(\d{8})", text)
-    return match.group(1) if match else ""
+    return normalize_report_date(match.group(1) if match else "")
+
+
+def normalize_report_date(report_date: str) -> str:
+    if not report_date:
+        return ""
+    digits = re.sub(r"\D", "", report_date)
+    if len(digits) != 8:
+        return ""
+    try:
+        datetime.strptime(digits, "%Y%m%d")
+    except ValueError:
+        return ""
+    return digits
 
 
 def format_report_date(report_date: str) -> str:
-    if len(report_date) == 8:
-        return f"{report_date[:4]}-{report_date[4:6]}-{report_date[6:8]}"
+    normalized = normalize_report_date(report_date)
+    if len(normalized) == 8:
+        return f"{normalized[:4]}-{normalized[4:6]}-{normalized[6:8]}"
     return report_date
 
 
+def parse_quarter_from_path(file_path: str) -> str:
+    normalized = file_path.replace("\\", "/")
+    match = re.search(r"(\d{4})/Q([1-4])", normalized, re.I)
+    if match:
+        return f"{match.group(1)}Q{match.group(2)}"
+    match = re.search(r"(\d{4})Q([1-4])", normalized, re.I)
+    if match:
+        return f"{match.group(1)}Q{match.group(2)}"
+    return ""
+
+
+def parse_author_from_path(file_path: str) -> str:
+    basename = os.path.basename(file_path)
+    match = re.search(r"工作周报[-_]?(.+?)\.docx$", basename)
+    if match:
+        return match.group(1).strip()
+    return ""
+
+
 def parse_date_filter(question: str) -> Tuple[Optional[int], Optional[int]]:
-    """从问题文本解析年月，仅用于显式开启自动日期过滤时。"""
     match = re.search(r"(\d{4})年(\d{1,2})月", question)
     if match:
         return int(match.group(1)), int(match.group(2))
@@ -35,8 +70,9 @@ def parse_date_filter(question: str) -> Tuple[Optional[int], Optional[int]]:
         return int(match.group(1)), None
     match = re.search(r"(\d{8})", question)
     if match:
-        d = match.group(1)
-        return int(d[:4]), int(d[4:6])
+        normalized = normalize_report_date(match.group(1))
+        if normalized:
+            return int(normalized[:4]), int(normalized[4:6])
     return None, None
 
 

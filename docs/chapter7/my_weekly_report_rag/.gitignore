@@ -1,0 +1,7 @@
+.env
+.storage_tmp/
+.embedding_cache.sqlite
+storage.backup/
+__pycache__/
+*.pyc
+.pytest_cache/

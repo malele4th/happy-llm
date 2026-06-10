@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 from typing import Optional
 
+from bootstrap import check_env
 from config import DEFAULT_K, STORAGE_PATH
 from models import DEFAULT_SEARCH_MODE, SearchMode
 from presentation import (
@@ -11,6 +13,8 @@ from presentation import (
     print_search_results,
 )
 from retrieval import RAGSession, resolve_date_filter, search
+
+logger = logging.getLogger(__name__)
 
 
 def ask(
@@ -25,17 +29,13 @@ def ask(
     session: Optional[RAGSession] = None,
 ) -> str:
     active_session = session or RAGSession(storage_path)
-    filter_year, filter_month = resolve_date_filter(
-        question, year, month, auto_date
-    )
+    filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
 
     results = search(
         question,
-        storage_path=storage_path,
         k=k,
-        year=year,
-        month=month,
-        auto_date=auto_date,
+        year=filter_year,
+        month=filter_month,
         mode=mode,
         session=active_session,
     )
@@ -47,7 +47,7 @@ def ask(
             else "无"
         )
         print(f"检索模式: {mode} | 过滤: {filter_desc}")
-        print_search_results(results)
+        print_search_results(results, verbose=False, show_scores=True)
 
     if not results:
         return "周报中没有找到相关内容，请尝试换个问法或指定 --year/--month。"
@@ -66,6 +66,7 @@ def interactive_chat(
     auto_date: bool = False,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
+    check_env()
     session = RAGSession(storage_path)
     print("周报 RAG 交互模式（输入 quit 退出，每轮独立检索）")
 
