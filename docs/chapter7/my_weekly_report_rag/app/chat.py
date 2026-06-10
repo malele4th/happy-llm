@@ -8,9 +8,52 @@ from generation.output import (
     build_numbered_context,
     format_answer_with_citations,
     print_search_results,
+    results_to_citations,
 )
-from models import DEFAULT_SEARCH_MODE, SearchMode
+from models import DEFAULT_SEARCH_MODE, ChatResponse, SearchMode
 from retrieval.session import RAGSession, resolve_date_filter, search
+
+
+def ask_detail(
+    question: str,
+    index_path: str = INDEX_PATH,
+    k: int = DEFAULT_K,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    auto_date: bool = True,
+    mode: SearchMode = DEFAULT_SEARCH_MODE,
+    session: Optional[RAGSession] = None,
+) -> ChatResponse:
+    active_session = session or RAGSession(index_path)
+    filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
+
+    results = search(
+        question,
+        k=k,
+        year=filter_year,
+        month=filter_month,
+        mode=mode,
+        session=active_session,
+    )
+
+    if not results:
+        return ChatResponse(
+            answer="周报中没有找到相关内容，请尝试换个问法或指定年月。",
+            citations=[],
+            mode=mode,
+            filter_year=filter_year,
+            filter_month=filter_month,
+        )
+
+    context = build_numbered_context(results)
+    answer = active_session.chat.chat(question, context)
+    return ChatResponse(
+        answer=answer,
+        citations=results_to_citations(results),
+        mode=mode,
+        filter_year=filter_year,
+        filter_month=filter_month,
+    )
 
 
 def ask(

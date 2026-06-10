@@ -3,8 +3,26 @@
 
 from typing import List
 
-from models import SearchResult
+from models import Citation, SearchResult
 from utils import format_report_date
+
+
+def results_to_citations(results: list[SearchResult]) -> list[Citation]:
+    citations: list[Citation] = []
+    for index, result in enumerate(results, 1):
+        body = result.text.split("\n", 1)[-1]
+        preview = body[:200].replace("\n", " ")
+        citations.append(
+            Citation(
+                index=index,
+                date=format_report_date(result.metadata.report_date) or "?",
+                project=result.metadata.project or "?",
+                score=result.score,
+                preview=preview,
+                source=result.metadata.source,
+            )
+        )
+    return citations
 
 
 def format_result_summary(

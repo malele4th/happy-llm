@@ -28,6 +28,7 @@ def main() -> None:
     parser.add_argument("--query", type=str, help="单次问答")
     parser.add_argument("--search", type=str, help="仅检索，不调用 LLM（调试用）")
     parser.add_argument("--chat", action="store_true", help="交互式问答")
+    parser.add_argument("--web", action="store_true", help="启动 Web 服务（局域网可访问）")
     parser.add_argument("--debug", action="store_true", help="显示检索分数与过滤条件")
     parser.add_argument("--verbose", action="store_true", help="检索时打印完整 chunk 内容")
     parser.add_argument("--k", type=int, default=DEFAULT_K, help=f"检索 top-k 片段（默认 {DEFAULT_K}）")
@@ -96,6 +97,10 @@ def main() -> None:
                 auto_date=args.auto_date,
                 mode=args.mode,
             )
+        elif args.web:
+            from web.server import run_server
+
+            run_server()
         else:
             parser.print_help()
     except WeeklyReportRagError as exc:

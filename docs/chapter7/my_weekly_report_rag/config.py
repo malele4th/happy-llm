@@ -55,6 +55,10 @@ BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 MANIFEST_FILE = "manifest.json"
 INDEX_TMP_DIR = ".index_tmp"
 
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
+WEB_PORT = int(os.getenv("WEB_PORT", "8080"))
+WEB_ACCESS_TOKEN = os.getenv("WEB_ACCESS_TOKEN", "")
+
 
 def setup_logging() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)

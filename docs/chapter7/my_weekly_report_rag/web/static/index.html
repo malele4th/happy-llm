@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>周报助手</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">周</div>
+        <div>
+          <h1>周报助手</h1>
+          <p id="status-text">连接中…</p>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>检索设置</h2>
+        <label class="field">
+          <span>模式</span>
+          <select id="mode">
+            <option value="latest">latest · 同项目取最新</option>
+            <option value="timeline">timeline · 时间线</option>
+            <option value="compare">compare · 按月对比</option>
+          </select>
+        </label>
+        <label class="field checkbox">
+          <input type="checkbox" id="auto-date" checked />
+          <span>自动从问题解析年月</span>
+        </label>
+        <label class="field">
+          <span>年份（可选）</span>
+          <input type="number" id="year" placeholder="如 2025" min="2020" max="2030" />
+        </label>
+        <label class="field">
+          <span>月份（可选）</span>
+          <input type="number" id="month" placeholder="1-12" min="1" max="12" />
+        </label>
+        <label class="field">
+          <span>访问令牌（可选）</span>
+          <input type="password" id="token" placeholder="WEB_ACCESS_TOKEN" />
+        </label>
+      </section>
+
+      <section class="panel hints">
+        <h2>示例问题</h2>
+        <button class="hint" type="button">2025年12月 catchii 有什么进展？</button>
+        <button class="hint" type="button">rank 模型最近做了什么优化？</button>
+        <button class="hint" type="button">家族房项目的时间线</button>
+      </section>
+    </aside>
+
+    <main class="chat">
+      <div id="messages" class="messages">
+        <div class="message assistant">
+          <div class="bubble">
+            你好，我是周报检索助手。你可以询问项目进展、某月工作内容等，我会从周报中检索并给出带引用的回答。
+          </div>
+        </div>
+      </div>
+
+      <form id="chat-form" class="composer">
+        <textarea
+          id="input"
+          rows="2"
+          placeholder="输入问题，Enter 发送，Shift+Enter 换行"
+          required
+        ></textarea>
+        <button id="send-btn" type="submit">发送</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

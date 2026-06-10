@@ -23,7 +23,7 @@ docx 周报 (REPORT_DATA_PATH)
    app/chat.py       ask / interactive_chat
 ```
 
-入口 `main.py` 负责 CLI 参数解析、环境检查、日志初始化，不包含业务逻辑。
+入口 `main.py` 负责 CLI 参数解析、环境检查、日志初始化，不包含业务逻辑。`--web` 模式启动 `web/server.py` 中的 FastAPI 服务。
 
 ## 模块职责
 
@@ -96,7 +96,17 @@ docx 周报 (REPORT_DATA_PATH)
 
 | 文件 | 职责 |
 |------|------|
-| `chat.py` | `ask()` 和 `interactive_chat()`：检索 → 生成 → 格式化 |
+| `chat.py` | `ask()` / `ask_detail()` / `interactive_chat()`：检索 → 生成 → 格式化 |
+
+### web/ — Web 服务
+
+| 文件 | 职责 |
+|------|------|
+| `server.py` | FastAPI 应用，`/api/chat` 与 `/api/health` |
+| `schemas.py` | 请求/响应 Pydantic 模型 |
+| `static/` | 聊天页面（HTML/CSS/JS） |
+
+Web 服务启动时加载一次 `RAGSession`，多用户请求通过线程锁串行调用 LLM/检索，避免并发冲突。
 
 ## 数据流示例
 

@@ -29,6 +29,9 @@ cp .env_example .env
 | `EMBEDDING_MODEL` | Embedding 模型 | `BAAI/bge-m3` |
 | `CHAT_MODEL` | 对话模型 | `Qwen/Qwen2.5-32B-Instruct` |
 | `LOG_LEVEL` | 日志级别 | `INFO` |
+| `WEB_HOST` | Web 监听地址 | `0.0.0.0` |
+| `WEB_PORT` | Web 端口 | `8080` |
+| `WEB_ACCESS_TOKEN` | 访问令牌（可选） | 空 |
 
 ### 3. 构建索引
 
@@ -41,6 +44,16 @@ python main.py --build
 首次全量构建；之后默认增量更新（仅处理新增/变更的 docx）。
 
 ### 4. 使用
+
+**Web 模式（推荐给其他用户）**
+
+```bash
+./scripts/web.sh
+# 浏览器打开 http://127.0.0.1:8080
+# 局域网用户访问 http://<你的电脑IP>:8080
+```
+
+**命令行模式**
 
 ```bash
 # 仅检索（调试）
@@ -89,6 +102,7 @@ my_weekly_report_rag/
 ├── providers/           # OpenAI / Embedding
 ├── generation/          # LLM 与输出格式化
 ├── app/                 # 问答业务流程
+├── web/                 # Web 服务与前端页面
 ├── data/                # 向量索引（构建产物，git 忽略）
 ├── log/                 # 运行日志（按日落盘）
 ├── scripts/             # 便捷运行脚本

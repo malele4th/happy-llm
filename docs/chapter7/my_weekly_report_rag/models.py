@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from dataclasses import asdict, dataclass
-from typing import Literal, Tuple
+from dataclasses import asdict, dataclass, field
+from typing import List, Literal, Optional, Tuple
 
 from utils import normalize_report_date
 
@@ -67,3 +67,22 @@ class SearchResult:
     metadata: ChunkMetadata
     vector_score: float = 0.0
     keyword_score: float = 0.0
+
+
+@dataclass
+class Citation:
+    index: int
+    date: str
+    project: str
+    score: float
+    preview: str
+    source: str = ""
+
+
+@dataclass
+class ChatResponse:
+    answer: str
+    citations: List[Citation] = field(default_factory=list)
+    mode: str = DEFAULT_SEARCH_MODE
+    filter_year: Optional[int] = None
+    filter_month: Optional[int] = None

@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import asyncio
+import logging
+import socket
+import threading
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
+
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.chat import ask_detail
+from config import (
+    INDEX_PATH,
+    WEB_ACCESS_TOKEN,
+    WEB_HOST,
+    WEB_PORT,
+    check_env,
+    cleanup_index_tmp,
+    setup_logging,
+)
+from exceptions import WeeklyReportRagError
+from retrieval.session import RAGSession
+from web.schemas import ChatRequest, ChatResponseOut, CitationOut, HealthOut
+
+logger = logging.getLogger(__name__)
+
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+_query_lock = threading.Lock()
+
+
+def _local_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+
+
+def _verify_token(authorization: Optional[str] = Header(default=None)) -> None:
+    if not WEB_ACCESS_TOKEN:
+        return
+    if authorization != f"Bearer {WEB_ACCESS_TOKEN}":
+        raise HTTPException(status_code=401, detail="无效的访问令牌")
+
+
+def create_app() -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        setup_logging()
+        cleanup_index_tmp()
+        check_env()
+        logger.info("正在加载索引: %s", INDEX_PATH)
+        app.state.session = RAGSession(INDEX_PATH)
+        logger.info("索引已加载，共 %s 条 chunk", len(app.state.session.store.records))
+        yield
+
+    app = FastAPI(title="周报 RAG", lifespan=lifespan)
+
+    @app.get("/api/health", response_model=HealthOut)
+    def health() -> HealthOut:
+        session: RAGSession = app.state.session
+        return HealthOut(status="ok", chunk_count=len(session.store.records))
+
+    @app.post("/api/chat", response_model=ChatResponseOut, dependencies=[Depends(_verify_token)])
+    async def chat(request: ChatRequest) -> ChatResponseOut:
+        session: RAGSession = app.state.session
+
+        def _run():
+            with _query_lock:
+                return ask_detail(
+                    request.message,
+                    k=request.k,
+                    year=request.year,
+                    month=request.month,
+                    auto_date=request.auto_date,
+                    mode=request.mode,
+                    session=session,
+                )
+
+        try:
+            result = await asyncio.to_thread(_run)
+        except WeeklyReportRagError as exc:
+            logger.exception("问答失败")
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+        return ChatResponseOut(
+            answer=result.answer,
+            citations=[CitationOut(**c.__dict__) for c in result.citations],
+            mode=result.mode,
+            filter_year=result.filter_year,
+            filter_month=result.filter_month,
+        )
+
+    @app.get("/")
+    def index_page():
+        return FileResponse(STATIC_DIR / "index.html")
+
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    return app
+
+
+def run_server(host: str = WEB_HOST, port: int = WEB_PORT) -> None:
+    import uvicorn
+
+    lan_ip = _local_ip()
+    print("\n" + "=" * 52)
+    print("  周报 RAG Web 服务已启动")
+    print(f"  本机访问:   http://127.0.0.1:{port}")
+    print(f"  局域网访问: http://{lan_ip}:{port}")
+    if WEB_ACCESS_TOKEN:
+        print("  已启用访问令牌，请在页面设置中填入 WEB_ACCESS_TOKEN")
+    print("=" * 52 + "\n")
+
+    uvicorn.run(
+        "web.server:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        log_level="info",
+    )
