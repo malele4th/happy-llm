@@ -44,6 +44,5 @@ class OpenAIEmbedding(BaseEmbeddings):
 
     def get_embedding(self, text: str, model: str = EMBEDDING_MODEL) -> List[float]:
         if self.is_api:
-            text = text.replace("\n", " ")
             return self.client.embeddings.create(input=[text], model=model).data[0].embedding
         raise NotImplementedError

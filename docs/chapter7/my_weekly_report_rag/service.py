@@ -4,13 +4,13 @@
 import os
 import shutil
 import sys
-from typing import List
+from typing import List, Optional
 
 from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH
 from Embeddings import OpenAIEmbedding
 from LLM import OpenAIChat
-from utils import ReadFiles
-from VectorBase import VectorStore
+from utils import ReadFiles, parse_date_filter
+from VectorBase import SearchResult, VectorStore
 
 
 def check_env() -> None:
@@ -38,10 +38,13 @@ def build_index(
         print(f"错误: 在 {data_path} 下未找到 docx 文件")
         sys.exit(1)
 
-    docs = reader.get_content()
-    print(f"切分为 {len(docs)} 个 chunk")
+    chunks = reader.get_chunks()
+    print(f"切分为 {len(chunks)} 个项目 chunk")
 
-    vector = VectorStore(docs)
+    vector = VectorStore(
+        document=[chunk.text for chunk in chunks],
+        metadata=[chunk.to_metadata() for chunk in chunks],
+    )
     embedding = OpenAIEmbedding()
     vector.get_vector(embedding_model=embedding)
     vector.persist(path=storage_path)
@@ -60,20 +63,66 @@ def load_index(storage_path: str = STORAGE_PATH) -> VectorStore:
     return vector
 
 
-def ask(question: str, storage_path: str = STORAGE_PATH, k: int = DEFAULT_K) -> str:
-    check_env()
+def search(
+    question: str,
+    storage_path: str = STORAGE_PATH,
+    k: int = DEFAULT_K,
+) -> List[SearchResult]:
     vector = load_index(storage_path)
     embedding = OpenAIEmbedding()
-    contexts = vector.query(question, embedding_model=embedding, k=k)
-    context = "\n\n---\n\n".join(contexts)
+    year, month = parse_date_filter(question)
+    return vector.query(
+        question,
+        embedding_model=embedding,
+        k=k,
+        year=year,
+        month=month,
+    )
+
+
+def print_search_results(results: List[SearchResult]) -> None:
+    if not results:
+        print("  (未检索到满足相似度阈值的片段)")
+        return
+    for i, result in enumerate(results, 1):
+        meta = result.metadata
+        print(
+            f"  [{i}] score={result.score:.3f} | "
+            f"{meta.get('report_date', '?')} | {meta.get('project', '?')}"
+        )
+        preview = result.text.split("\n", 1)[-1][:120].replace("\n", " ")
+        print(f"      {preview}...")
+
+
+def ask(
+    question: str,
+    storage_path: str = STORAGE_PATH,
+    k: int = DEFAULT_K,
+    debug: bool = False,
+) -> str:
+    check_env()
+    results = search(question, storage_path, k=k)
+
+    if debug:
+        year, month = parse_date_filter(question)
+        filter_desc = f"year={year}, month={month}" if year else "无"
+        print(f"检索过滤: {filter_desc}")
+        print_search_results(results)
+
+    if not results:
+        return "周报中没有找到相关内容，请尝试换个问法或去掉日期限制。"
+
+    context = "\n\n---\n\n".join(r.text for r in results)
     chat = OpenAIChat()
     return chat.chat(question, [], context)
 
 
-def interactive_chat(storage_path: str = STORAGE_PATH, k: int = DEFAULT_K) -> None:
+def interactive_chat(
+    storage_path: str = STORAGE_PATH,
+    k: int = DEFAULT_K,
+    debug: bool = False,
+) -> None:
     check_env()
-    vector = load_index(storage_path)
-    embedding = OpenAIEmbedding()
     chat = OpenAIChat()
     history: List[dict] = []
 
@@ -90,8 +139,18 @@ def interactive_chat(storage_path: str = STORAGE_PATH, k: int = DEFAULT_K) -> No
             print("再见")
             break
 
-        contexts = vector.query(question, embedding_model=embedding, k=k)
-        context = "\n\n---\n\n".join(contexts)
+        results = search(question, storage_path, k=k)
+        if debug:
+            year, month = parse_date_filter(question)
+            filter_desc = f"year={year}, month={month}" if year else "无"
+            print(f"检索过滤: {filter_desc}")
+            print_search_results(results)
+
+        if not results:
+            print("\n周报中没有找到相关内容。")
+            continue
+
+        context = "\n\n---\n\n".join(r.text for r in results)
         answer = chat.chat(question, history.copy(), context)
         print(f"\n{answer}")
         history.append({"role": "user", "content": question})
