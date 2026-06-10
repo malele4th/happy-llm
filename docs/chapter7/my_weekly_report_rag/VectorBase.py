@@ -4,7 +4,7 @@
 import json
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -58,9 +58,6 @@ class VectorStore:
         else:
             self.metadata = [{} for _ in self.document]
 
-    def get_similarity(self, vector1: List[float], vector2: List[float]) -> float:
-        return BaseEmbeddings.cosine_similarity(vector1, vector2)
-
     def _filter_indices(
         self,
         year: Optional[int] = None,
@@ -103,7 +100,7 @@ class VectorStore:
 
         scores = []
         for i in candidate_indices:
-            score = self.get_similarity(query_vector, self.vectors[i])
+            score = BaseEmbeddings.cosine_similarity(query_vector, self.vectors[i])
             scores.append((i, score))
 
         scores.sort(key=lambda x: x[1], reverse=True)

@@ -254,6 +254,3 @@ class ReadFiles:
                         )
 
         return chunks
-
-    def get_content(self) -> List[str]:
-        return [chunk.text for chunk in self.get_chunks()]

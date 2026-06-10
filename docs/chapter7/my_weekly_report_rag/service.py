@@ -4,7 +4,7 @@
 import os
 import shutil
 import sys
-from typing import List, Optional
+from typing import List
 
 from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH
 from Embeddings import OpenAIEmbedding
