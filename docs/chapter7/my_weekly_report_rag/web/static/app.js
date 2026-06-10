@@ -4,8 +4,8 @@ const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send-btn");
 const statusText = document.getElementById("status-text");
 
-const modeEl = document.getElementById("mode");
-const autoDateEl = document.getElementById("auto-date");
+const DEFAULT_MODE = "latest";
+const DEFAULT_AUTO_DATE = true;
 
 function appendMessage(role, html) {
   const wrap = document.createElement("div");
@@ -15,12 +15,20 @@ function appendMessage(role, html) {
   return wrap;
 }
 
-function scrollMessageToCenter(element) {
-  const containerHeight = messagesEl.clientHeight;
-  const elementTop = element.offsetTop;
-  const elementHeight = element.offsetHeight;
-  const target = elementTop - containerHeight / 2 + elementHeight / 2;
-  messagesEl.scrollTop = Math.max(0, target);
+function scrollToShowQuestionAndAnswer(userEl, answerEl) {
+  const padding = 12;
+  const viewHeight = messagesEl.clientHeight;
+  const questionTop = userEl.offsetTop;
+  const answerBottom = answerEl.offsetTop + answerEl.offsetHeight;
+  const combinedHeight = answerBottom - questionTop;
+
+  if (combinedHeight <= viewHeight) {
+    messagesEl.scrollTop = Math.max(0, questionTop - padding);
+    return;
+  }
+
+  // 问题置顶，回答开头紧跟其下；较长内容由用户向下滚动查看
+  messagesEl.scrollTop = Math.max(0, questionTop - padding);
 }
 
 function scrollToBottom() {
@@ -65,15 +73,16 @@ async function checkHealth() {
 
 async function sendMessage(text) {
   const userMessage = appendMessage("user", escapeHtml(text));
-  scrollMessageToCenter(userMessage);
+  scrollToBottom();
 
   const pending = appendMessage("assistant", '<span class="typing">正在检索周报并生成回答…</span>');
+  scrollToBottom();
   sendBtn.disabled = true;
 
   const payload = {
     message: text,
-    mode: modeEl.value,
-    auto_date: autoDateEl.checked,
+    mode: DEFAULT_MODE,
+    auto_date: DEFAULT_AUTO_DATE,
     k: 5,
   };
 
@@ -93,10 +102,10 @@ async function sendMessage(text) {
       renderCitations(data.citations) +
       renderFilterMeta(data);
     pending.querySelector(".bubble").innerHTML = html;
-    scrollToBottom();
+    scrollToShowQuestionAndAnswer(userMessage, pending);
   } catch (err) {
     pending.querySelector(".bubble").innerHTML = `<span class="error">${escapeHtml(err.message)}</span>`;
-    scrollToBottom();
+    scrollToShowQuestionAndAnswer(userMessage, pending);
   } finally {
     sendBtn.disabled = false;
   }

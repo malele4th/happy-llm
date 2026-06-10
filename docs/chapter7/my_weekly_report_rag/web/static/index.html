@@ -17,22 +17,6 @@
         </div>
       </div>
 
-      <section class="panel">
-        <h2>检索设置</h2>
-        <label class="field">
-          <span>模式</span>
-          <select id="mode">
-            <option value="latest">latest · 同项目取最新</option>
-            <option value="timeline">timeline · 时间线</option>
-            <option value="compare">compare · 按月对比</option>
-          </select>
-        </label>
-        <label class="field checkbox">
-          <input type="checkbox" id="auto-date" checked />
-          <span>自动从问题解析年月</span>
-        </label>
-      </section>
-
       <section class="panel hints">
         <h2>示例问题</h2>
         <button class="hint" type="button">2025年12月 catchii 有什么进展？</button>
@@ -43,10 +27,8 @@
 
     <main class="chat">
       <div id="messages" class="messages">
-        <div class="message assistant">
-          <div class="bubble">
-            你好，我是周报检索助手。你可以询问项目进展、某月工作内容等，我会从周报中检索并给出带引用的回答。
-          </div>
+        <div class="message assistant welcome">
+          <div class="bubble">你好，我是周报检索助手。你可以询问项目进展、某月工作内容等，我会从周报中检索并给出带引用的回答。</div>
         </div>
       </div>
 
