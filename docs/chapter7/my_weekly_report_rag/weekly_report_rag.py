@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""兼容旧入口：python weekly_report_rag.py"""
+"""兼容旧入口，请优先使用: python main.py"""
 
-from cli import main
+from main import main
 
 if __name__ == "__main__":
     main()

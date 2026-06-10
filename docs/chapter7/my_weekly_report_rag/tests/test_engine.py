@@ -5,9 +5,10 @@ import unittest
 
 import numpy as np
 
-from indexing.store import IndexRecord, IndexStore
+from indexing.record import IndexRecord
+from indexing.store import IndexStore
 from models import ChunkMetadata
-from retrieval.retriever import Retriever
+from retrieval.engine import SearchEngine
 
 
 class _MockEmbedding:
@@ -20,7 +21,7 @@ class _MockEmbedding:
         return [self.get_embedding(text, kind=kind) for text in texts]
 
 
-class RetrieverTestCase(unittest.TestCase):
+class SearchEngineTestCase(unittest.TestCase):
     def _record(self, text: str, metadata: ChunkMetadata, vector) -> IndexRecord:
         record = IndexRecord(text=text, metadata=metadata)
         record.attach_vector(np.array(vector, dtype=np.float32))
@@ -48,10 +49,10 @@ class RetrieverTestCase(unittest.TestCase):
             ),
         ]
         self.store = IndexStore(records)
-        self.retriever = Retriever(self.store)
+        self.engine = SearchEngine(self.store)
 
     def test_query_prefers_matching_project(self) -> None:
-        results = self.retriever.query(
+        results = self.engine.query(
             "catchii家族房",
             embedding_model=_MockEmbedding(),
             k=1,

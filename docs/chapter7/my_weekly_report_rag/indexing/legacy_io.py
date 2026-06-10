@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 from exceptions import StorageCorruptError
-from indexing.store import IndexRecord
+from indexing.record import IndexRecord
 from models import ChunkMetadata
 
 logger = logging.getLogger(__name__)

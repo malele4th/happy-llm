@@ -20,7 +20,7 @@ from retrieval.search_modes import apply_search_mode
 logger = logging.getLogger(__name__)
 
 
-class Retriever:
+class SearchEngine:
     def __init__(self, store: IndexStore) -> None:
         self.store = store
 

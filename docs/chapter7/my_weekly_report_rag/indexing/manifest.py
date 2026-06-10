@@ -6,7 +6,7 @@ import json
 import os
 
 from config import COVER_CONTENT, MANIFEST_FILE, MAX_TOKEN_LEN, PARSER_RULES_PATH
-from parsing.reader import ReadFiles
+from parsing.reader import DocxReportReader
 from parsing.rules import heading_max_len, load_parser_rules
 
 
@@ -42,7 +42,7 @@ def load_manifest(storage_path: str) -> dict:
         return json.load(handle)
 
 
-def save_manifest(storage_path: str, reader: ReadFiles) -> None:
+def save_manifest(storage_path: str, reader: DocxReportReader) -> None:
     manifest = {
         "index_version": compute_index_version(),
         "parser_rules": load_parser_rules(),

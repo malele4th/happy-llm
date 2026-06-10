@@ -6,12 +6,12 @@ import argparse
 import logging
 import sys
 
-from app.service import ask, interactive_chat
-from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH, setup_logging
+from app.chat import ask, interactive_chat
+from config import DEFAULT_K, REPORT_DATA_PATH, STORAGE_PATH, check_env, cleanup_storage_tmp, setup_logging
 from exceptions import WeeklyReportRagError
-from indexing import build_index, check_env, cleanup_storage_tmp
+from generation.output import print_search_results
+from indexing.pipeline import build_index
 from models import DEFAULT_SEARCH_MODE, SEARCH_MODES
-from generation.presentation import print_search_results
 from retrieval.session import RAGSession, resolve_date_filter, search
 
 logger = logging.getLogger(__name__)

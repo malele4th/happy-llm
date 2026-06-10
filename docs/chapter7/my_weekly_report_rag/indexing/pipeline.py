@@ -11,7 +11,7 @@ from exceptions import NoDataError
 from indexing.manifest import compute_index_version, file_hash, load_manifest, save_manifest
 from indexing.store import IndexStore, load_index
 from models import DocumentChunk
-from parsing.reader import ReadFiles
+from parsing.reader import DocxReportReader
 from providers.embeddings import OpenAIEmbedding
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def _embed_chunks(embedding: OpenAIEmbedding, chunks: List[DocumentChunk]) -> Li
     return embedding.get_embeddings([chunk.text for chunk in chunks], kind="passage")
 
 
-def _incremental_build(reader: ReadFiles, storage_path: str) -> IndexStore:
+def _incremental_build(reader: DocxReportReader, storage_path: str) -> IndexStore:
     store = load_index(storage_path)
     manifest = load_manifest(storage_path)
     old_files = manifest.get("files", {})
@@ -80,7 +80,7 @@ def build_index(
     storage_path: str = STORAGE_PATH,
     force: bool = False,
 ) -> IndexStore:
-    reader = ReadFiles(data_path)
+    reader = DocxReportReader(data_path)
     if not reader.file_list:
         raise NoDataError(f"在 {data_path} 下未找到 docx 文件")
 

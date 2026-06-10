@@ -3,14 +3,17 @@
 
 import logging
 import os
+import shutil
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
+from exceptions import EnvConfigError
+
 _ = load_dotenv(find_dotenv())
 
 _BASE_DIR = Path(__file__).resolve().parent
-PARSER_RULES_PATH = str(_BASE_DIR / "parser_rules.json")
+PARSER_RULES_PATH = str(_BASE_DIR / "parsing" / "parser_rules.json")
 
 REPORT_DATA_PATH = os.getenv(
     "REPORT_DATA_PATH",
@@ -58,3 +61,16 @@ def setup_logging() -> None:
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
         datefmt="%H:%M:%S",
     )
+
+
+def check_env() -> None:
+    if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_BASE_URL"):
+        raise EnvConfigError("请在 .env 中配置 OPENAI_API_KEY 和 OPENAI_BASE_URL")
+
+
+def cleanup_storage_tmp(base_dir: str | None = None) -> None:
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.abspath(STORAGE_PATH)) or "."
+    tmp_path = os.path.join(base_dir, ".storage_tmp")
+    if os.path.isdir(tmp_path):
+        shutil.rmtree(tmp_path, ignore_errors=True)

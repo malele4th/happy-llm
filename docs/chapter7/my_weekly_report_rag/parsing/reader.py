@@ -9,7 +9,9 @@ from parsing.docx import sections_to_chunks, split_docx_into_sections
 from utils import parse_report_date_from_path, parse_report_date_from_text
 
 
-class ReadFiles:
+class DocxReportReader:
+    """扫描周报目录并解析 docx 为 DocumentChunk。"""
+
     def __init__(self, path: str) -> None:
         self.data_path = os.path.abspath(path)
         self.file_list = self._scan_files()

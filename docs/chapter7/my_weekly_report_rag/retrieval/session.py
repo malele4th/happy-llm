@@ -4,21 +4,21 @@
 from typing import List, Optional, Tuple
 
 from config import DEFAULT_K, STORAGE_PATH
+from generation.llm import OpenAIChat
 from indexing.store import IndexStore, load_index
 from models import DEFAULT_SEARCH_MODE, SearchMode, SearchResult
 from providers.embeddings import OpenAIEmbedding
-from generation.llm import OpenAIChat
-from retrieval.retriever import Retriever
+from retrieval.engine import SearchEngine
 from utils import parse_date_filter
 
 
 class RAGSession:
-    """复用索引、检索器与模型客户端。"""
+    """复用索引、检索引擎与模型客户端。"""
 
     def __init__(self, storage_path: str = STORAGE_PATH) -> None:
         self.storage_path = storage_path
         self.store: IndexStore = load_index(storage_path)
-        self.retriever = Retriever(self.store)
+        self.search_engine = SearchEngine(self.store)
         self.embedding = OpenAIEmbedding()
         self.chat = OpenAIChat()
 
@@ -46,7 +46,7 @@ def search(
     storage_path: str = STORAGE_PATH,
 ) -> List[SearchResult]:
     active_session = session or RAGSession(storage_path)
-    return active_session.retriever.query(
+    return active_session.search_engine.query(
         question,
         embedding_model=active_session.embedding,
         k=k,

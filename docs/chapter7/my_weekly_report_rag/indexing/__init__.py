@@ -1,4 +1,12 @@
-from indexing.pipeline import build_index
-from indexing.store import IndexStore, check_env, cleanup_storage_tmp, load_index
+from indexing.record import IndexRecord
+from indexing.store import IndexStore, load_index
 
-__all__ = ["build_index", "IndexStore", "check_env", "cleanup_storage_tmp", "load_index"]
+__all__ = ["IndexRecord", "IndexStore", "build_index", "load_index"]
+
+
+def __getattr__(name: str):
+    if name == "build_index":
+        from indexing.pipeline import build_index
+
+        return build_index
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

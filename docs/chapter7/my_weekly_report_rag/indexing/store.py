@@ -5,57 +5,22 @@ import json
 import logging
 import os
 import shutil
-from dataclasses import dataclass
 from typing import List, Optional
 
 import numpy as np
 
 from config import STORAGE_PATH
-from exceptions import EnvConfigError, StorageCorruptError, StorageNotFoundError
+from exceptions import StorageCorruptError, StorageNotFoundError
+from indexing.record import IndexRecord
 from models import ChunkMetadata, DocumentChunk
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class IndexRecord:
-    text: str
-    metadata: ChunkMetadata
-    _vector: Optional[np.ndarray] = None
-
-    def attach_vector(self, vector: np.ndarray) -> None:
-        self._vector = vector.astype(np.float32)
-
-    @property
-    def vector(self) -> np.ndarray:
-        if self._vector is None:
-            raise StorageCorruptError("记录缺少向量")
-        return self._vector
-
-    def to_storage_dict(self) -> dict:
-        return {
-            "text": self.text,
-            "metadata": self.metadata.to_dict(),
-        }
-
-
-def check_env() -> None:
-    if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_BASE_URL"):
-        raise EnvConfigError("请在 .env 中配置 OPENAI_API_KEY 和 OPENAI_BASE_URL")
-
-
-def cleanup_storage_tmp(base_dir: str | None = None) -> None:
-    if base_dir is None:
-        base_dir = os.path.dirname(os.path.abspath(STORAGE_PATH)) or "."
-    tmp_path = os.path.join(base_dir, ".storage_tmp")
-    if os.path.isdir(tmp_path):
-        shutil.rmtree(tmp_path, ignore_errors=True)
-
-
 def load_index(storage_path: str = STORAGE_PATH) -> "IndexStore":
     if not IndexStore.exists(storage_path):
         raise StorageNotFoundError(
-            "storage 不存在或不完整，请先运行: python weekly_report_rag.py --build"
+            "storage 不存在或不完整，请先运行: python main.py --build"
         )
     store = IndexStore()
     store.load_from_disk(storage_path)
