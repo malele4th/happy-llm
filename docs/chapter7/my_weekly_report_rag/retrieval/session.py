@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from config import DEFAULT_K, INDEX_PATH
 from generation.llm import OpenAIChat
@@ -9,7 +9,6 @@ from indexing.store import IndexStore, load_index
 from models import DEFAULT_SEARCH_MODE, SearchMode, SearchResult
 from providers.embeddings import OpenAIEmbedding
 from retrieval.engine import SearchEngine
-from utils import parse_date_filter
 
 
 class RAGSession:
@@ -23,19 +22,6 @@ class RAGSession:
         self.chat = OpenAIChat()
 
 
-def resolve_date_filter(
-    question: str,
-    year: Optional[int],
-    month: Optional[int],
-    auto_date: bool,
-) -> Tuple[Optional[int], Optional[int]]:
-    if year is not None:
-        return year, month
-    if auto_date:
-        return parse_date_filter(question)
-    return None, None
-
-
 def search(
     question: str,
     k: int = DEFAULT_K,
@@ -45,10 +31,11 @@ def search(
     session: Optional[RAGSession] = None,
     index_path: str = INDEX_PATH,
 ) -> List[SearchResult]:
-    active_session = session or RAGSession(index_path)
-    return active_session.search_engine.query(
+    if session is None:
+        session = RAGSession(index_path)
+    return session.search_engine.query(
         question,
-        embedding_model=active_session.embedding,
+        embedding_model=session.embedding,
         k=k,
         year=year,
         month=month,

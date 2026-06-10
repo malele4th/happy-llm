@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from exceptions import StorageCorruptError
+from exceptions import IndexCorruptError
 from models import ChunkMetadata
 
 
@@ -22,10 +22,10 @@ class IndexRecord:
     @property
     def vector(self) -> np.ndarray:
         if self._vector is None:
-            raise StorageCorruptError("记录缺少向量")
+            raise IndexCorruptError("记录缺少向量")
         return self._vector
 
-    def to_storage_dict(self) -> dict:
+    def to_dict(self) -> dict:
         return {
             "text": self.text,
             "metadata": self.metadata.to_dict(),

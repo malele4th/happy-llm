@@ -34,7 +34,7 @@ docx 周报 (REPORT_DATA_PATH)
 | `main.py` | CLI 入口，参数分发 |
 | `config.py` | 环境变量、常量、日志配置、`check_env()` |
 | `models.py` | `ChunkMetadata`、`DocumentChunk`、`SearchResult` |
-| `utils.py` | 日期解析、路径工具、查询分词 |
+| `utils.py` | 日期解析、路径工具、`resolve_date_filter()` |
 | `exceptions.py` | 统一异常层次 |
 
 ### parsing/ — 文档解析
@@ -57,7 +57,6 @@ docx 周报 (REPORT_DATA_PATH)
 | `store.py` | `IndexStore`：读写 `data/records.json` + `vectors.npy` |
 | `pipeline.py` | `build_index()`：全量/增量构建 |
 | `manifest.py` | 文件哈希、索引版本号，驱动增量更新 |
-| `legacy_io.py` | 兼容旧版 `document.json` 格式 |
 
 增量逻辑：对比 manifest 中各 docx 的 MD5，仅对变更文件重新解析和 embedding，删除已移除文件对应的 chunk。
 
@@ -68,7 +67,7 @@ docx 周报 (REPORT_DATA_PATH)
 | `engine.py` | `SearchEngine`：混合打分主流程 |
 | `scoring.py` | 余弦相似度、BM25、候选池合并 |
 | `search_modes.py` | `latest` / `timeline` / `compare` 去重策略 |
-| `session.py` | `RAGSession`：复用索引、Embedding、LLM 客户端 |
+| `session.py` | `RAGSession` 与 `search()` 入口 |
 
 检索流程：
 
@@ -96,7 +95,7 @@ docx 周报 (REPORT_DATA_PATH)
 
 | 文件 | 职责 |
 |------|------|
-| `chat.py` | `ask()` / `ask_detail()` / `interactive_chat()`：检索 → 生成 → 格式化 |
+| `chat.py` | `ask_detail()` 为核心；`ask()` 基于其格式化 CLI 输出 |
 
 ### web/ — Web 服务
 

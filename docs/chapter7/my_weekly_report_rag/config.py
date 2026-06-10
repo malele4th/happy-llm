@@ -16,18 +16,16 @@ _ = load_dotenv(find_dotenv())
 _BASE_DIR = Path(__file__).resolve().parent
 PARSER_RULES_PATH = str(_BASE_DIR / "parsing" / "parser_rules.json")
 LOG_DIR = _BASE_DIR / "log"
-INDEX_PATH = os.getenv("INDEX_PATH") or os.getenv("REPORT_STORAGE_PATH", "./data")
+INDEX_PATH = os.getenv("INDEX_PATH", "./data")
 
-REPORT_DATA_PATH = os.getenv(
-    "REPORT_DATA_PATH",
-    "/Users/bigo/Desktop/bigo/bigo工作周报",
-)
+REPORT_DATA_PATH = os.getenv("REPORT_DATA_PATH", "")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 CHAT_MODEL = os.getenv("CHAT_MODEL", "Qwen/Qwen2.5-32B-Instruct")
 
 MAX_TOKEN_LEN = 600
 COVER_CONTENT = 150
 DEFAULT_K = 5
+DEFAULT_AUTO_DATE = os.getenv("DEFAULT_AUTO_DATE", "true").lower() in ("1", "true", "yes")
 SEARCH_CANDIDATE_POOL_FACTOR = 8
 
 MODE_THRESHOLDS = {
@@ -54,6 +52,7 @@ BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 
 MANIFEST_FILE = "manifest.json"
 INDEX_TMP_DIR = ".index_tmp"
+LEGACY_TMP_DIR = ".storage_tmp"
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", "1203"))
@@ -91,6 +90,7 @@ def check_env() -> None:
 def cleanup_index_tmp(base_dir: str | None = None) -> None:
     if base_dir is None:
         base_dir = os.path.dirname(os.path.abspath(INDEX_PATH)) or "."
-    tmp_path = os.path.join(base_dir, INDEX_TMP_DIR)
-    if os.path.isdir(tmp_path):
-        shutil.rmtree(tmp_path, ignore_errors=True)
+    for tmp_name in (INDEX_TMP_DIR, LEGACY_TMP_DIR):
+        tmp_path = os.path.join(base_dir, tmp_name)
+        if os.path.isdir(tmp_path):
+            shutil.rmtree(tmp_path, ignore_errors=True)

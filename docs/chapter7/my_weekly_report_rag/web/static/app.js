@@ -5,7 +5,6 @@ const sendBtn = document.getElementById("send-btn");
 const statusText = document.getElementById("status-text");
 
 const DEFAULT_MODE = "latest";
-const DEFAULT_AUTO_DATE = true;
 
 function appendMessage(role, html) {
   const wrap = document.createElement("div");
@@ -82,7 +81,6 @@ async function sendMessage(text) {
   const payload = {
     message: text,
     mode: DEFAULT_MODE,
-    auto_date: DEFAULT_AUTO_DATE,
     k: 5,
   };
 

@@ -7,21 +7,26 @@ import logging
 import sys
 
 from app.chat import ask, interactive_chat
-from config import DEFAULT_K, INDEX_PATH, REPORT_DATA_PATH, check_env, cleanup_index_tmp, setup_logging
+from config import (
+    DEFAULT_AUTO_DATE,
+    DEFAULT_K,
+    INDEX_PATH,
+    REPORT_DATA_PATH,
+    check_env,
+    cleanup_index_tmp,
+    setup_logging,
+)
 from exceptions import WeeklyReportRagError
 from generation.output import print_search_results
 from indexing.pipeline import build_index
 from models import DEFAULT_SEARCH_MODE, SEARCH_MODES
-from retrieval.session import RAGSession, resolve_date_filter, search
+from retrieval.session import RAGSession, search
+from utils import resolve_date_filter
 
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    setup_logging()
-    cleanup_index_tmp()
-    check_env()
-
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
     parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 data 目录）")
@@ -42,12 +47,23 @@ def main() -> None:
     parser.add_argument("--month", type=int, help="按月份过滤检索结果（需配合 --year）")
     parser.add_argument(
         "--auto-date",
-        action="store_true",
-        help="从问题文本自动解析年月并过滤（默认关闭）",
+        action=argparse.BooleanOptionalAction,
+        default=DEFAULT_AUTO_DATE,
+        help="从问题文本自动解析年月并过滤",
     )
     parser.add_argument("--data-path", type=str, default=REPORT_DATA_PATH, help="周报原始数据路径")
     parser.add_argument("--index", type=str, default=INDEX_PATH, help="向量索引目录（默认 ./data）")
     args = parser.parse_args()
+
+    if args.web:
+        from web.server import run_server
+
+        run_server()
+        return
+
+    setup_logging()
+    cleanup_index_tmp()
+    check_env()
 
     try:
         if args.build:
@@ -97,10 +113,6 @@ def main() -> None:
                 auto_date=args.auto_date,
                 mode=args.mode,
             )
-        elif args.web:
-            from web.server import run_server
-
-            run_server()
         else:
             parser.print_help()
     except WeeklyReportRagError as exc:

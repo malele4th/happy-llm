@@ -4,7 +4,7 @@
 import os
 import re
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
 def parse_report_date_from_path(file_path: str) -> str:
@@ -76,6 +76,14 @@ def parse_date_filter(question: str) -> Tuple[Optional[int], Optional[int]]:
     return None, None
 
 
-def extract_query_tokens(query: str) -> List[str]:
-    tokens = re.findall(r"[\u4e00-\u9fff]+|[a-zA-Z0-9]+", query.lower())
-    return [token for token in tokens if len(token) >= 2]
+def resolve_date_filter(
+    question: str,
+    year: Optional[int],
+    month: Optional[int],
+    auto_date: bool,
+) -> Tuple[Optional[int], Optional[int]]:
+    if year is not None:
+        return year, month
+    if auto_date:
+        return parse_date_filter(question)
+    return None, None

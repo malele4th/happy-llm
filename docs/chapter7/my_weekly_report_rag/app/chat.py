@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from config import DEFAULT_K, INDEX_PATH
+from config import DEFAULT_AUTO_DATE, DEFAULT_K, INDEX_PATH
 from generation.output import (
     build_numbered_context,
     format_answer_with_citations,
@@ -11,7 +11,8 @@ from generation.output import (
     results_to_citations,
 )
 from models import DEFAULT_SEARCH_MODE, ChatResponse, SearchMode
-from retrieval.session import RAGSession, resolve_date_filter, search
+from retrieval.session import RAGSession, search
+from utils import resolve_date_filter
 
 
 def ask_detail(
@@ -20,7 +21,7 @@ def ask_detail(
     k: int = DEFAULT_K,
     year: Optional[int] = None,
     month: Optional[int] = None,
-    auto_date: bool = True,
+    auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> ChatResponse:
@@ -53,6 +54,7 @@ def ask_detail(
         mode=mode,
         filter_year=filter_year,
         filter_month=filter_month,
+        search_results=results,
     )
 
 
@@ -63,37 +65,37 @@ def ask(
     debug: bool = False,
     year: Optional[int] = None,
     month: Optional[int] = None,
-    auto_date: bool = False,
+    auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> str:
-    active_session = session or RAGSession(index_path)
-    filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
-
-    results = search(
-        question,
-        k=k,
-        year=filter_year,
-        month=filter_month,
-        mode=mode,
-        session=active_session,
-    )
-
     if debug:
+        filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
         filter_desc = (
             f"year={filter_year}, month={filter_month}"
             if filter_year is not None
             else "无"
         )
         print(f"检索模式: {mode} | 过滤: {filter_desc}")
-        print_search_results(results, show_scores=True)
 
-    if not results:
-        return "周报中没有找到相关内容，请尝试换个问法或指定 --year/--month。"
+    detail = ask_detail(
+        question,
+        index_path=index_path,
+        k=k,
+        year=year,
+        month=month,
+        auto_date=auto_date,
+        mode=mode,
+        session=session,
+    )
 
-    context = build_numbered_context(results)
-    answer = active_session.chat.chat(question, context)
-    return format_answer_with_citations(answer, results)
+    if debug and detail.search_results:
+        print_search_results(detail.search_results, show_scores=True)
+
+    if not detail.search_results:
+        return detail.answer
+
+    return format_answer_with_citations(detail.answer, detail.search_results)
 
 
 def interactive_chat(
@@ -102,7 +104,7 @@ def interactive_chat(
     debug: bool = False,
     year: Optional[int] = None,
     month: Optional[int] = None,
-    auto_date: bool = False,
+    auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
     session = RAGSession(index_path)

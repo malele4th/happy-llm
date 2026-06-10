@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -63,23 +63,23 @@ def create_app() -> FastAPI:
     app = FastAPI(title="周报 RAG", lifespan=lifespan)
 
     @app.get("/api/health", response_model=HealthOut)
-    def health() -> HealthOut:
-        session: RAGSession = app.state.session
+    def health(request: Request) -> HealthOut:
+        session: RAGSession = request.app.state.session
         return HealthOut(status="ok", chunk_count=len(session.store.records))
 
     @app.post("/api/chat", response_model=ChatResponseOut, dependencies=[Depends(_verify_token)])
-    async def chat(request: ChatRequest) -> ChatResponseOut:
-        session: RAGSession = app.state.session
+    async def chat(request: Request, body: ChatRequest) -> ChatResponseOut:
+        session: RAGSession = request.app.state.session
 
         def _run():
             with _query_lock:
                 return ask_detail(
-                    request.message,
-                    k=request.k,
-                    year=request.year,
-                    month=request.month,
-                    auto_date=request.auto_date,
-                    mode=request.mode,
+                    body.message,
+                    k=body.k,
+                    year=body.year,
+                    month=body.month,
+                    auto_date=body.auto_date,
+                    mode=body.mode,
                     session=session,
                 )
 
@@ -91,7 +91,7 @@ def create_app() -> FastAPI:
 
         return ChatResponseOut(
             answer=result.answer,
-            citations=[CitationOut(**c.__dict__) for c in result.citations],
+            citations=[CitationOut.from_citation(c) for c in result.citations],
             mode=result.mode,
             filter_year=result.filter_year,
             filter_month=result.filter_month,
@@ -114,7 +114,7 @@ def run_server(host: str = WEB_HOST, port: int = WEB_PORT) -> None:
     print(f"  本机访问:   http://127.0.0.1:{port}")
     print(f"  局域网访问: http://{lan_ip}:{port}")
     if WEB_ACCESS_TOKEN:
-        print("  已启用访问令牌，请在页面设置中填入 WEB_ACCESS_TOKEN")
+        print("  已启用 WEB_ACCESS_TOKEN，请求需携带 Authorization 头")
     print("=" * 52 + "\n")
 
     uvicorn.run(

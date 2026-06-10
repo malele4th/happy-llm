@@ -10,12 +10,12 @@ class EnvConfigError(WeeklyReportRagError):
     """环境变量未配置。"""
 
 
-class StorageNotFoundError(WeeklyReportRagError):
-    """向量库不存在或不完整。"""
+class IndexNotFoundError(WeeklyReportRagError):
+    """索引目录不存在或不完整。"""
 
 
-class StorageCorruptError(WeeklyReportRagError):
-    """向量库数据不一致或损坏。"""
+class IndexCorruptError(WeeklyReportRagError):
+    """索引数据不一致或损坏。"""
 
 
 class NoDataError(WeeklyReportRagError):

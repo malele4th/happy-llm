@@ -24,7 +24,8 @@ cp .env_example .env
 |------|------|--------|
 | `OPENAI_API_KEY` | API 密钥 | 必填 |
 | `OPENAI_BASE_URL` | API 地址 | 必填 |
-| `REPORT_DATA_PATH` | 周报 docx 原始目录 | 见 config.py |
+| `REPORT_DATA_PATH` | 周报 docx 原始目录 | 必填，见 `.env` |
+| `DEFAULT_AUTO_DATE` | 自动从问题解析年月 | `true` |
 | `INDEX_PATH` | 向量索引输出目录 | `./data` |
 | `EMBEDDING_MODEL` | Embedding 模型 | `BAAI/bge-m3` |
 | `CHAT_MODEL` | 对话模型 | `Qwen/Qwen2.5-32B-Instruct` |
@@ -82,8 +83,8 @@ python main.py --build --force
 # 指定年月过滤
 python main.py --search "rank模型" --year 2025 --month 12
 
-# 检索模式
-python main.py --query "catchii进展" --mode timeline --auto-date
+# 检索模式（默认开启 auto-date，可用 --no-auto-date 关闭）
+python main.py --query "catchii进展" --mode timeline
 # latest   - 同项目取最新一条
 # timeline - 按时间线返回多条
 # compare  - 按月对比

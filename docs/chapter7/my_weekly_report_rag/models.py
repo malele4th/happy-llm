@@ -86,3 +86,4 @@ class ChatResponse:
     mode: str = DEFAULT_SEARCH_MODE
     filter_year: Optional[int] = None
     filter_month: Optional[int] = None
+    search_results: List[SearchResult] = field(default_factory=list, repr=False)

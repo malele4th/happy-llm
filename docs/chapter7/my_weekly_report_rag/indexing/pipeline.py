@@ -80,6 +80,8 @@ def build_index(
     index_path: str = INDEX_PATH,
     force: bool = False,
 ) -> IndexStore:
+    if not data_path:
+        raise NoDataError("请配置 REPORT_DATA_PATH 或使用 --data-path 指定周报目录")
     reader = DocxReportReader(data_path)
     if not reader.file_list:
         raise NoDataError(f"在 {data_path} 下未找到 docx 文件")
