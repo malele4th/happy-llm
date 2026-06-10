@@ -6,26 +6,25 @@ const statusText = document.getElementById("status-text");
 
 const modeEl = document.getElementById("mode");
 const autoDateEl = document.getElementById("auto-date");
-const yearEl = document.getElementById("year");
-const monthEl = document.getElementById("month");
-const tokenEl = document.getElementById("token");
-
-const savedToken = localStorage.getItem("weekly_rag_token");
-if (savedToken) {
-  tokenEl.value = savedToken;
-}
-
-tokenEl.addEventListener("change", () => {
-  localStorage.setItem("weekly_rag_token", tokenEl.value.trim());
-});
 
 function appendMessage(role, html) {
   const wrap = document.createElement("div");
   wrap.className = `message ${role}`;
   wrap.innerHTML = `<div class="bubble">${html}</div>`;
   messagesEl.appendChild(wrap);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
   return wrap;
+}
+
+function scrollMessageToCenter(element) {
+  const containerHeight = messagesEl.clientHeight;
+  const elementTop = element.offsetTop;
+  const elementHeight = element.offsetHeight;
+  const target = elementTop - containerHeight / 2 + elementHeight / 2;
+  messagesEl.scrollTop = Math.max(0, target);
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
 function renderCitations(citations) {
@@ -65,15 +64,11 @@ async function checkHealth() {
 }
 
 async function sendMessage(text) {
-  appendMessage("user", escapeHtml(text));
+  const userMessage = appendMessage("user", escapeHtml(text));
+  scrollMessageToCenter(userMessage);
+
   const pending = appendMessage("assistant", '<span class="typing">正在检索周报并生成回答…</span>');
   sendBtn.disabled = true;
-
-  const headers = { "Content-Type": "application/json" };
-  const token = tokenEl.value.trim();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   const payload = {
     message: text,
@@ -81,15 +76,11 @@ async function sendMessage(text) {
     auto_date: autoDateEl.checked,
     k: 5,
   };
-  const year = yearEl.value.trim();
-  const month = monthEl.value.trim();
-  if (year) payload.year = Number(year);
-  if (month) payload.month = Number(month);
 
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
@@ -102,11 +93,12 @@ async function sendMessage(text) {
       renderCitations(data.citations) +
       renderFilterMeta(data);
     pending.querySelector(".bubble").innerHTML = html;
+    scrollToBottom();
   } catch (err) {
     pending.querySelector(".bubble").innerHTML = `<span class="error">${escapeHtml(err.message)}</span>`;
+    scrollToBottom();
   } finally {
     sendBtn.disabled = false;
-    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 }
 

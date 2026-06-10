@@ -30,7 +30,7 @@ cp .env_example .env
 | `CHAT_MODEL` | 对话模型 | `Qwen/Qwen2.5-32B-Instruct` |
 | `LOG_LEVEL` | 日志级别 | `INFO` |
 | `WEB_HOST` | Web 监听地址 | `0.0.0.0` |
-| `WEB_PORT` | Web 端口 | `8080` |
+| `WEB_PORT` | Web 端口 | `1203` |
 | `WEB_ACCESS_TOKEN` | 访问令牌（可选） | 空 |
 
 ### 3. 构建索引
@@ -49,8 +49,8 @@ python main.py --build
 
 ```bash
 ./scripts/web.sh
-# 浏览器打开 http://127.0.0.1:8080
-# 局域网用户访问 http://<你的电脑IP>:8080
+# 浏览器打开 http://127.0.0.1:1203
+# 局域网用户访问 http://<你的电脑IP>:1203
 ```
 
 **命令行模式**

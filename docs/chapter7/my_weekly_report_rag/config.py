@@ -56,7 +56,7 @@ MANIFEST_FILE = "manifest.json"
 INDEX_TMP_DIR = ".index_tmp"
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
-WEB_PORT = int(os.getenv("WEB_PORT", "8080"))
+WEB_PORT = int(os.getenv("WEB_PORT", "1203"))
 WEB_ACCESS_TOKEN = os.getenv("WEB_ACCESS_TOKEN", "")
 
 
