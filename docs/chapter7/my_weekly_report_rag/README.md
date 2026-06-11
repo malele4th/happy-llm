@@ -138,4 +138,4 @@ python -m unittest discover -s tests -v
 
 ## 更多文档
 
-- [代码架构说明](docs/architecture.md)
+- [代码架构说明](docs/代码架构.md)
