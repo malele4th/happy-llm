@@ -3,6 +3,15 @@ const formEl = document.getElementById("chat-form");
 const inputEl = document.getElementById("input");
 const sendBtn = document.getElementById("send-btn");
 const statusText = document.getElementById("status-text");
+const statusSidebar = document.getElementById("status-text-sidebar");
+
+function setStatus(text) {
+  if (statusText) statusText.textContent = text;
+  if (statusSidebar) statusSidebar.textContent = text;
+}
+const sidebar = document.getElementById("sidebar");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+const menuBtn = document.getElementById("menu-btn");
 
 const DEFAULT_MODE = "latest";
 const TOKEN_STORAGE_KEY = "rag_access_token";
@@ -26,8 +35,22 @@ if (tokenInput) {
     } else {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
+    checkHealth();
   });
 }
+
+function closeSidebar() {
+  sidebar?.classList.remove("open");
+  sidebarOverlay?.classList.remove("visible");
+}
+
+function toggleSidebar() {
+  const isOpen = sidebar?.classList.toggle("open");
+  sidebarOverlay?.classList.toggle("visible", isOpen);
+}
+
+menuBtn?.addEventListener("click", toggleSidebar);
+sidebarOverlay?.addEventListener("click", closeSidebar);
 
 function appendMessage(role, html) {
   const wrap = document.createElement("div");
@@ -62,7 +85,7 @@ function renderCitations(citations) {
   const items = citations
     .map(
       (c) =>
-        `<div class="citation"><strong>[${c.index}]</strong> ${c.date} · ${c.project} · score ${c.score.toFixed(3)}<br>${escapeHtml(c.preview)}</div>`
+        `<div class="citation"><strong>[${c.index}]</strong> ${c.date} · ${c.project} · score ${c.score.toFixed(3)}<br>${linkifyHtml(c.preview)}</div>`
     )
     .join("");
   return `<div class="citations"><h3>引用来源</h3>${items}</div>`;
@@ -73,6 +96,53 @@ function escapeHtml(text) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+function escapeAttr(text) {
+  return text.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+}
+
+const URL_IN_TEXT_RE =
+  /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"'\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]+)/gi;
+
+const URL_TRAIL_RE = /[.,;:!?)\]】」』、。，；：！？]+$/u;
+
+function normalizeUrlText(text) {
+  return text.replace(/(https?)\uFF1A\/\//gi, "$1://");
+}
+
+/** 转义 HTML 并将 http(s) 链接转为可点击，新标签页打开 */
+function linkifyHtml(text) {
+  if (!text) return "";
+  const source = normalizeUrlText(text);
+  let result = "";
+  let lastIndex = 0;
+
+  for (const match of source.matchAll(URL_IN_TEXT_RE)) {
+    const start = match.index ?? 0;
+    result += escapeHtml(source.slice(lastIndex, start));
+
+    if (match[2]) {
+      const label = match[1];
+      const url = match[2].replace(URL_TRAIL_RE, "");
+      result +=
+        `<a class="answer-link" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">` +
+        `${escapeHtml(label)}</a>`;
+      lastIndex = start + match[0].length;
+      continue;
+    }
+
+    const raw = match[3] || "";
+    const url = raw.replace(URL_TRAIL_RE, "");
+    const trailing = raw.slice(url.length);
+    result +=
+      `<a class="answer-link" href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">` +
+      `${escapeHtml(url)}</a>${escapeHtml(trailing)}`;
+    lastIndex = start + raw.length;
+  }
+
+  result += escapeHtml(source.slice(lastIndex));
+  return result;
 }
 
 function renderFilterMeta(data) {
@@ -87,9 +157,9 @@ async function checkHealth() {
   try {
     const res = await fetch("/api/health", { headers: getAuthHeaders() });
     const data = await res.json();
-    statusText.textContent = `已连接 · ${data.chunk_count} 条周报片段`;
+    setStatus(`已连接 · ${data.chunk_count} 条周报片段`);
   } catch {
-    statusText.textContent = "服务未连接";
+    setStatus("服务未连接");
   }
 }
 
@@ -119,7 +189,7 @@ async function sendMessage(text) {
     }
 
     const html =
-      escapeHtml(data.answer) +
+      linkifyHtml(data.answer) +
       renderCitations(data.citations) +
       renderFilterMeta(data);
     pending.querySelector(".bubble").innerHTML = html;
@@ -150,6 +220,7 @@ inputEl.addEventListener("keydown", (event) => {
 document.querySelectorAll(".hint").forEach((btn) => {
   btn.addEventListener("click", () => {
     inputEl.value = btn.textContent.trim();
+    closeSidebar();
     inputEl.focus();
   });
 });

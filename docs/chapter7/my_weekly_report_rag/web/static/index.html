@@ -2,18 +2,20 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>周报助手</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>malele周报助手</title>
+  <link rel="stylesheet" href="/static/style.css?v=3" />
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-icon">周</div>
+    <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand sidebar-brand">
+        <div class="brand-icon">m</div>
         <div>
-          <h1>周报助手</h1>
-          <p id="status-text">连接中…</p>
+          <h1>malele周报助手</h1>
+          <p id="status-text-sidebar" class="status-sidebar">连接中…</p>
         </div>
       </div>
 
@@ -26,12 +28,19 @@
 
       <section class="panel token-panel">
         <h2>访问令牌</h2>
-        <p class="token-hint">服务端启用 WEB_ACCESS_TOKEN 时填写</p>
-        <input id="access-token" type="password" placeholder="Bearer 令牌（可选）" autocomplete="off" />
+        <input id="access-token" type="password" placeholder="" autocomplete="off" />
       </section>
     </aside>
 
     <main class="chat">
+      <header class="chat-header">
+        <button type="button" class="menu-btn" id="menu-btn" aria-label="打开菜单">☰</button>
+        <div class="chat-header-info">
+          <h1>malele周报助手</h1>
+          <p id="status-text">连接中…</p>
+        </div>
+      </header>
+
       <div id="messages" class="messages">
         <div class="message assistant welcome">
           <div class="bubble">你好，我是周报检索助手。你可以询问项目进展、某月工作内容等，我会从周报中检索并给出带引用的回答。</div>
@@ -41,8 +50,8 @@
       <form id="chat-form" class="composer">
         <textarea
           id="input"
-          rows="2"
-          placeholder="输入问题，Enter 发送，Shift+Enter 换行"
+          rows="1"
+          placeholder="输入问题，Enter 发送"
           required
         ></textarea>
         <button id="send-btn" type="submit">发送</button>
@@ -50,6 +59,6 @@
     </main>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 </html>
