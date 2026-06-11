@@ -1,7 +1,5 @@
 .env
 .index_tmp/
-.storage_tmp/
-storage/
 .embedding_cache.sqlite
 data/*
 !data/.gitkeep

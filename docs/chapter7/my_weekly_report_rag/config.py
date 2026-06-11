@@ -55,7 +55,6 @@ BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 
 MANIFEST_FILE = "manifest.json"
 INDEX_TMP_DIR = ".index_tmp"
-LEGACY_TMP_DIR = ".storage_tmp"  # 迁移遗留，启动时一并清理
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", "1203"))
@@ -98,7 +97,6 @@ def cleanup_tmp_dirs(base_dir: str | None = None) -> None:
     """清理索引构建产生的临时目录。"""
     if base_dir is None:
         base_dir = os.path.dirname(os.path.abspath(INDEX_PATH)) or "."
-    for tmp_name in (INDEX_TMP_DIR, LEGACY_TMP_DIR):
-        tmp_path = os.path.join(base_dir, tmp_name)
-        if os.path.isdir(tmp_path):
-            shutil.rmtree(tmp_path, ignore_errors=True)
+    tmp_path = os.path.join(base_dir, INDEX_TMP_DIR)
+    if os.path.isdir(tmp_path):
+        shutil.rmtree(tmp_path, ignore_errors=True)
