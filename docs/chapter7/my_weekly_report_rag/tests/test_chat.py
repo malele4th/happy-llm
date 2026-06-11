@@ -5,18 +5,21 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from app.chat import ask, ask_detail
+from generation.llm import EMPTY_CONTEXT
 from models import ChunkMetadata, SearchResult
 
 
 class ChatTestCase(unittest.TestCase):
     @patch("app.chat.search")
-    @patch("app.chat.RAGSession")
-    def test_ask_detail_no_results(self, mock_session_cls, mock_search) -> None:
+    def test_ask_detail_no_results_still_calls_llm(self, mock_search) -> None:
         mock_search.return_value = []
-        mock_session_cls.return_value = MagicMock()
+        mock_session = MagicMock()
+        mock_session.chat.chat.return_value = "【非周报内容】我是 malele 周报助手。"
 
-        result = ask_detail("测试问题", session=mock_session_cls.return_value)
-        self.assertIn("没有找到", result.answer)
+        result = ask_detail("你是谁", session=mock_session)
+
+        mock_session.chat.chat.assert_called_once_with("你是谁", EMPTY_CONTEXT)
+        self.assertIn("非周报内容", result.answer)
         self.assertEqual(result.citations, [])
 
     @patch("app.chat.ask_detail")

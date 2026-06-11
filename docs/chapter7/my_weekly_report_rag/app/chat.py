@@ -6,6 +6,7 @@ from typing import Optional
 
 from config import DEFAULT_AUTO_DATE, DEFAULT_K, INDEX_PATH
 from exceptions import WeeklyReportRagError
+from generation.llm import EMPTY_CONTEXT
 from generation.output import (
     build_numbered_context,
     format_answer_with_citations,
@@ -44,13 +45,11 @@ def ask_detail(
         session=active_session,
     )
 
-    if not results:
-        return ChatResponse.not_found(mode, filter_year, filter_month)
-
-    answer = active_session.chat.chat(question, build_numbered_context(results))
+    context = build_numbered_context(results) if results else EMPTY_CONTEXT
+    answer = active_session.chat.chat(question, context)
     return ChatResponse(
         answer=answer,
-        citations=results_to_citations(results),
+        citations=results_to_citations(results) if results else [],
         mode=mode,
         filter_year=filter_year,
         filter_month=filter_month,
