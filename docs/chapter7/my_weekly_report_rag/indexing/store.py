@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""向量索引的加载、持久化与内存管理。"""
 
 import json
 import logging
@@ -66,15 +67,15 @@ class IndexStore:
         self._matrix = None
 
     def persist(self, path: str = INDEX_PATH) -> None:
+        """原子写入：先写临时目录，再整体替换目标目录。"""
         parent_dir = os.path.dirname(os.path.abspath(path)) or "."
         tmp_path = os.path.join(parent_dir, INDEX_TMP_DIR)
         if os.path.exists(tmp_path):
             shutil.rmtree(tmp_path, ignore_errors=True)
         os.makedirs(tmp_path, exist_ok=True)
 
-        payload = [record.to_dict() for record in self.records]
         with open(os.path.join(tmp_path, "records.json"), "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, ensure_ascii=False)
+            json.dump([record.to_dict() for record in self.records], handle, ensure_ascii=False)
 
         matrix = self.vector_matrix
         if matrix.size:
@@ -88,25 +89,27 @@ class IndexStore:
 
     def load_from_disk(self, path: str = INDEX_PATH) -> None:
         records_path = os.path.join(path, "records.json")
+        vectors_path = os.path.join(path, "vectors.npy")
         if not os.path.exists(records_path):
             raise IndexCorruptError("缺少 records.json")
+        if not os.path.exists(vectors_path):
+            raise IndexCorruptError("缺少 vectors.npy")
+
         with open(records_path, "r", encoding="utf-8") as handle:
             payload = json.load(handle)
         self.records = [
             IndexRecord(text=item["text"], metadata=ChunkMetadata.from_dict(item["metadata"]))
             for item in payload
         ]
-        vectors_npy = os.path.join(path, "vectors.npy")
-        if not os.path.exists(vectors_npy):
-            raise IndexCorruptError("缺少 vectors.npy")
-        self._matrix = np.load(vectors_npy).astype(np.float32)
-        if len(self.records) != len(self._matrix):
-            raise IndexCorruptError(
-                f"记录数 {len(self.records)} 与向量数 {len(self._matrix)} 不一致"
-            )
+        self._matrix = np.load(vectors_path).astype(np.float32)
+        self._attach_vectors()
+        self._validate_lengths()
+
+    def _attach_vectors(self) -> None:
+        if self._matrix is None:
+            return
         for index, record in enumerate(self.records):
             record.attach_vector(self._matrix[index])
-        self._validate_lengths()
 
     def _validate_lengths(self) -> None:
         if not self.records:

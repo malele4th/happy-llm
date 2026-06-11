@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Web API 请求/响应模型。"""
 
-from typing import List, Literal, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
 from config import DEFAULT_AUTO_DATE, DEFAULT_K
 from models import Citation, SEARCH_MODES
+
+if TYPE_CHECKING:
+    from models import ChatResponse
 
 
 class ChatRequest(BaseModel):
@@ -37,6 +41,16 @@ class ChatResponseOut(BaseModel):
     mode: str
     filter_year: Optional[int] = None
     filter_month: Optional[int] = None
+
+    @classmethod
+    def from_response(cls, response: "ChatResponse") -> "ChatResponseOut":
+        return cls(
+            answer=response.answer,
+            citations=[CitationOut.from_citation(c) for c in response.citations],
+            mode=response.mode,
+            filter_year=response.filter_year,
+            filter_month=response.filter_month,
+        )
 
 
 class HealthOut(BaseModel):

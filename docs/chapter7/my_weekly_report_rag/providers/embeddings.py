@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""Embedding 提供方：OpenAI 兼容 API + 本地缓存。"""
 
 import logging
 import time
@@ -12,6 +13,7 @@ from config import (
     EMBEDDING_MAX_RETRIES,
     EMBEDDING_MODEL,
 )
+from exceptions import EmbeddingError
 from providers.embedding_cache import EmbeddingCache
 from providers.openai_client import get_openai_client
 
@@ -69,7 +71,7 @@ class OpenAIEmbedding:
                 self.cache.set_many(missing_texts, fetched)
 
         if any(embedding is None for embedding in results):
-            raise RuntimeError("embedding 结果不完整")
+            raise EmbeddingError("embedding 结果不完整")
         return results  # type: ignore[return-value]
 
     def _fetch_embeddings(self, texts: List[str]) -> List[List[float]]:
@@ -95,4 +97,4 @@ class OpenAIEmbedding:
                 )
                 if attempt < EMBEDDING_MAX_RETRIES - 1:
                     time.sleep(2 ** attempt)
-        raise last_error  # type: ignore[misc]
+        raise EmbeddingError(f"embedding 请求失败（已重试 {EMBEDDING_MAX_RETRIES} 次）: {last_error}") from last_error

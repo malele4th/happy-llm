@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""FastAPI Web 服务：健康检查、问答 API 与静态页面。"""
 
 import asyncio
 import logging
@@ -20,12 +21,12 @@ from config import (
     WEB_HOST,
     WEB_PORT,
     check_env,
-    cleanup_index_tmp,
+    cleanup_tmp_dirs,
     setup_logging,
 )
 from exceptions import WeeklyReportRagError
 from retrieval.session import RAGSession
-from web.schemas import ChatRequest, ChatResponseOut, CitationOut, HealthOut
+from web.schemas import ChatRequest, ChatResponseOut, HealthOut
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         setup_logging()
-        cleanup_index_tmp()
+        cleanup_tmp_dirs()
         check_env()
         logger.info("正在加载索引: %s", INDEX_PATH)
         app.state.session = RAGSession(INDEX_PATH)
@@ -89,13 +90,7 @@ def create_app() -> FastAPI:
             logger.exception("问答失败")
             raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-        return ChatResponseOut(
-            answer=result.answer,
-            citations=[CitationOut.from_citation(c) for c in result.citations],
-            mode=result.mode,
-            filter_year=result.filter_year,
-            filter_month=result.filter_month,
-        )
+        return ChatResponseOut.from_response(result)
 
     @app.get("/")
     def index_page():

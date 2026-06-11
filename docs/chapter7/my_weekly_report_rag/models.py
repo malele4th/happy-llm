@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""领域数据模型：chunk、检索结果、问答响应。"""
 
 from dataclasses import asdict, dataclass, field
 from typing import List, Literal, Optional, Tuple
 
+from config import NO_RESULTS_MESSAGE
 from utils import normalize_report_date
 
 SearchMode = Literal["latest", "timeline", "compare"]
@@ -40,9 +42,7 @@ class ChunkMetadata:
         )
 
     def year_month(self) -> str:
-        if len(self.report_date) >= 6:
-            return self.report_date[:6]
-        return "unknown"
+        return self.report_date[:6] if len(self.report_date) >= 6 else "unknown"
 
     def identity_key(self) -> Tuple[str, str, int]:
         return (self.source, self.project, self.chunk_index)
@@ -87,3 +87,18 @@ class ChatResponse:
     filter_year: Optional[int] = None
     filter_month: Optional[int] = None
     search_results: List[SearchResult] = field(default_factory=list, repr=False)
+
+    @classmethod
+    def not_found(
+        cls,
+        mode: SearchMode,
+        filter_year: Optional[int],
+        filter_month: Optional[int],
+        message: str = NO_RESULTS_MESSAGE,
+    ) -> "ChatResponse":
+        return cls(
+            answer=message,
+            mode=mode,
+            filter_year=filter_year,
+            filter_month=filter_month,
+        )

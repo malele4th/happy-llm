@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""检索结果与问答输出的格式化。"""
 
 from typing import List
 
@@ -7,11 +8,15 @@ from models import Citation, SearchResult
 from utils import format_report_date
 
 
-def results_to_citations(results: list[SearchResult]) -> list[Citation]:
-    citations: list[Citation] = []
+def extract_chunk_body(text: str) -> str:
+    """去掉 chunk 头部 meta 行，返回正文。"""
+    return text.split("\n", 1)[-1] if text else ""
+
+
+def results_to_citations(results: List[SearchResult]) -> List[Citation]:
+    citations: List[Citation] = []
     for index, result in enumerate(results, 1):
-        body = result.text.split("\n", 1)[-1]
-        preview = body[:200].replace("\n", " ")
+        preview = extract_chunk_body(result.text)[:200].replace("\n", " ")
         citations.append(
             Citation(
                 index=index,
@@ -65,9 +70,8 @@ def print_search_results(
         return
     for index, result in enumerate(results, 1):
         print(f"  {format_result_summary(index, result, show_scores=show_scores)}")
-        body = result.text.split("\n", 1)[-1]
+        body = extract_chunk_body(result.text)
         if verbose:
             print(f"      {body}")
         else:
-            preview = body[:120].replace("\n", " ")
-            print(f"      {preview}...")
+            print(f"      {body[:120].replace(chr(10), ' ')}...")

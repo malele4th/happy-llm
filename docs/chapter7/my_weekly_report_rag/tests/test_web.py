@@ -19,7 +19,7 @@ class WebApiTestCase(unittest.TestCase):
         mock_session.store.records = [object(), object()]
         with (
             patch("web.server.setup_logging"),
-            patch("web.server.cleanup_index_tmp"),
+            patch("web.server.cleanup_tmp_dirs"),
             patch("web.server.check_env"),
             patch("web.server.RAGSession", return_value=mock_session),
         ):

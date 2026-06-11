@@ -5,6 +5,7 @@
 import argparse
 import logging
 import sys
+from argparse import Namespace
 
 from app.chat import ask, interactive_chat
 from config import (
@@ -13,7 +14,7 @@ from config import (
     INDEX_PATH,
     REPORT_DATA_PATH,
     check_env,
-    cleanup_index_tmp,
+    cleanup_tmp_dirs,
     setup_logging,
 )
 from exceptions import WeeklyReportRagError
@@ -26,7 +27,7 @@ from utils import resolve_date_filter
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
     parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 data 目录）")
@@ -53,7 +54,67 @@ def main() -> None:
     )
     parser.add_argument("--data-path", type=str, default=REPORT_DATA_PATH, help="周报原始数据路径")
     parser.add_argument("--index", type=str, default=INDEX_PATH, help="向量索引目录（默认 ./data）")
-    args = parser.parse_args()
+    return parser
+
+
+def _run_search(args: Namespace) -> None:
+    filter_year, filter_month = resolve_date_filter(
+        args.search, args.year, args.month, args.auto_date
+    )
+    session = RAGSession(args.index)
+    results = search(
+        args.search,
+        k=args.k,
+        year=filter_year,
+        month=filter_month,
+        mode=args.mode,
+        session=session,
+    )
+    if args.debug:
+        print(f"检索模式: {args.mode}")
+    print_search_results(results, verbose=args.verbose, show_scores=args.debug)
+
+
+def _run_query(args: Namespace) -> None:
+    session = RAGSession(args.index)
+    print(
+        ask(
+            args.query,
+            args.index,
+            k=args.k,
+            debug=args.debug,
+            year=args.year,
+            month=args.month,
+            auto_date=args.auto_date,
+            mode=args.mode,
+            session=session,
+        )
+    )
+
+
+def _dispatch(args: Namespace) -> None:
+    if args.build:
+        build_index(args.data_path, args.index, force=args.force)
+    elif args.search:
+        _run_search(args)
+    elif args.query:
+        _run_query(args)
+    elif args.chat:
+        interactive_chat(
+            args.index,
+            k=args.k,
+            debug=args.debug,
+            year=args.year,
+            month=args.month,
+            auto_date=args.auto_date,
+            mode=args.mode,
+        )
+    else:
+        _build_parser().print_help()
+
+
+def main() -> None:
+    args = _build_parser().parse_args()
 
     if args.web:
         from web.server import run_server
@@ -62,59 +123,11 @@ def main() -> None:
         return
 
     setup_logging()
-    cleanup_index_tmp()
+    cleanup_tmp_dirs()
     check_env()
 
     try:
-        if args.build:
-            build_index(args.data_path, args.index, force=args.force)
-        elif args.search:
-            filter_year, filter_month = resolve_date_filter(
-                args.search, args.year, args.month, args.auto_date
-            )
-            session = RAGSession(args.index)
-            results = search(
-                args.search,
-                k=args.k,
-                year=filter_year,
-                month=filter_month,
-                mode=args.mode,
-                session=session,
-            )
-            if args.debug:
-                print(f"检索模式: {args.mode}")
-            print_search_results(
-                results,
-                verbose=args.verbose,
-                show_scores=args.debug,
-            )
-        elif args.query:
-            session = RAGSession(args.index)
-            print(
-                ask(
-                    args.query,
-                    args.index,
-                    k=args.k,
-                    debug=args.debug,
-                    year=args.year,
-                    month=args.month,
-                    auto_date=args.auto_date,
-                    mode=args.mode,
-                    session=session,
-                )
-            )
-        elif args.chat:
-            interactive_chat(
-                args.index,
-                k=args.k,
-                debug=args.debug,
-                year=args.year,
-                month=args.month,
-                auto_date=args.auto_date,
-                mode=args.mode,
-            )
-        else:
-            parser.print_help()
+        _dispatch(args)
     except WeeklyReportRagError as exc:
         logger.error("%s", exc)
         print(f"错误: {exc}")

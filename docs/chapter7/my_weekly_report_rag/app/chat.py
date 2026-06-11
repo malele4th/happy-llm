@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""问答编排：检索 → LLM 生成 → 格式化输出。"""
 
 from typing import Optional
 
@@ -12,7 +13,11 @@ from generation.output import (
 )
 from models import DEFAULT_SEARCH_MODE, ChatResponse, SearchMode
 from retrieval.session import RAGSession, search
-from utils import resolve_date_filter
+from utils import format_filter_desc, resolve_date_filter
+
+
+def _get_session(session: Optional[RAGSession], index_path: str) -> RAGSession:
+    return session if session is not None else RAGSession(index_path)
 
 
 def ask_detail(
@@ -25,7 +30,8 @@ def ask_detail(
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> ChatResponse:
-    active_session = session or RAGSession(index_path)
+    """核心问答流程，返回结构化结果（Web / CLI 共用）。"""
+    active_session = _get_session(session, index_path)
     filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
 
     results = search(
@@ -38,16 +44,9 @@ def ask_detail(
     )
 
     if not results:
-        return ChatResponse(
-            answer="周报中没有找到相关内容，请尝试换个问法或指定年月。",
-            citations=[],
-            mode=mode,
-            filter_year=filter_year,
-            filter_month=filter_month,
-        )
+        return ChatResponse.not_found(mode, filter_year, filter_month)
 
-    context = build_numbered_context(results)
-    answer = active_session.chat.chat(question, context)
+    answer = active_session.chat.chat(question, build_numbered_context(results))
     return ChatResponse(
         answer=answer,
         citations=results_to_citations(results),
@@ -69,15 +68,7 @@ def ask(
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
 ) -> str:
-    if debug:
-        filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
-        filter_desc = (
-            f"year={filter_year}, month={filter_month}"
-            if filter_year is not None
-            else "无"
-        )
-        print(f"检索模式: {mode} | 过滤: {filter_desc}")
-
+    """CLI 问答，返回带引用的纯文本。"""
     detail = ask_detail(
         question,
         index_path=index_path,
@@ -89,8 +80,10 @@ def ask(
         session=session,
     )
 
-    if debug and detail.search_results:
-        print_search_results(detail.search_results, show_scores=True)
+    if debug:
+        print(f"检索模式: {detail.mode} | 过滤: {format_filter_desc(detail.filter_year, detail.filter_month)}")
+        if detail.search_results:
+            print_search_results(detail.search_results, show_scores=True)
 
     if not detail.search_results:
         return detail.answer
@@ -122,14 +115,4 @@ def interactive_chat(
             print("再见")
             break
 
-        answer = ask(
-            question,
-            k=k,
-            debug=debug,
-            year=year,
-            month=month,
-            auto_date=auto_date,
-            mode=mode,
-            session=session,
-        )
-        print(f"\n{answer}")
+        print(f"\n{ask(question, k=k, debug=debug, year=year, month=month, auto_date=auto_date, mode=mode, session=session)}")

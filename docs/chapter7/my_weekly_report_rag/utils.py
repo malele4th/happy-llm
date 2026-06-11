@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""日期解析、路径工具与检索过滤辅助函数。"""
 
 import os
 import re
@@ -44,24 +45,21 @@ def format_report_date(report_date: str) -> str:
 
 def parse_quarter_from_path(file_path: str) -> str:
     normalized = file_path.replace("\\", "/")
-    match = re.search(r"(\d{4})/Q([1-4])", normalized, re.I)
-    if match:
-        return f"{match.group(1)}Q{match.group(2)}"
-    match = re.search(r"(\d{4})Q([1-4])", normalized, re.I)
-    if match:
-        return f"{match.group(1)}Q{match.group(2)}"
+    for pattern in (r"(\d{4})/Q([1-4])", r"(\d{4})Q([1-4])"):
+        match = re.search(pattern, normalized, re.I)
+        if match:
+            return f"{match.group(1)}Q{match.group(2)}"
     return ""
 
 
 def parse_author_from_path(file_path: str) -> str:
     basename = os.path.basename(file_path)
     match = re.search(r"工作周报[-_]?(.+?)\.docx$", basename)
-    if match:
-        return match.group(1).strip()
-    return ""
+    return match.group(1).strip() if match else ""
 
 
 def parse_date_filter(question: str) -> Tuple[Optional[int], Optional[int]]:
+    """从问题文本解析年月，如「2025年12月」。"""
     match = re.search(r"(\d{4})年(\d{1,2})月", question)
     if match:
         return int(match.group(1)), int(match.group(2))
@@ -82,8 +80,16 @@ def resolve_date_filter(
     month: Optional[int],
     auto_date: bool,
 ) -> Tuple[Optional[int], Optional[int]]:
+    """CLI/Web 统一的日期过滤解析：显式参数优先，其次自动解析。"""
     if year is not None:
         return year, month
     if auto_date:
         return parse_date_filter(question)
     return None, None
+
+
+def format_filter_desc(year: Optional[int], month: Optional[int]) -> str:
+    """调试输出用的过滤条件描述。"""
+    if year is None:
+        return "无"
+    return f"year={year}, month={month}"

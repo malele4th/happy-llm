@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""全局配置、日志初始化与运行时环境检查。"""
 
 import logging
 import os
@@ -25,8 +26,10 @@ CHAT_MODEL = os.getenv("CHAT_MODEL", "Qwen/Qwen2.5-32B-Instruct")
 MAX_TOKEN_LEN = 600
 COVER_CONTENT = 150
 DEFAULT_K = 5
-DEFAULT_AUTO_DATE = os.getenv("DEFAULT_AUTO_DATE", "true").lower() in ("1", "true", "yes")
 SEARCH_CANDIDATE_POOL_FACTOR = 8
+
+# 检索无结果时的统一提示
+NO_RESULTS_MESSAGE = "周报中没有找到相关内容，请尝试换个问法或指定年月。"
 
 MODE_THRESHOLDS = {
     "latest": float(os.getenv("THRESHOLD_LATEST", "0.35")),
@@ -52,14 +55,17 @@ BGE_PASSAGE_PREFIX = os.getenv("BGE_PASSAGE_PREFIX", "")
 
 MANIFEST_FILE = "manifest.json"
 INDEX_TMP_DIR = ".index_tmp"
-LEGACY_TMP_DIR = ".storage_tmp"
+LEGACY_TMP_DIR = ".storage_tmp"  # 迁移遗留，启动时一并清理
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", "1203"))
 WEB_ACCESS_TOKEN = os.getenv("WEB_ACCESS_TOKEN", "")
 
+DEFAULT_AUTO_DATE = os.getenv("DEFAULT_AUTO_DATE", "true").lower() in ("1", "true", "yes")
+
 
 def setup_logging() -> None:
+    """配置控制台 + 按日滚动的文件日志。"""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     level_name = os.getenv("LOG_LEVEL", "INFO").upper()
     level = getattr(logging, level_name, logging.INFO)
@@ -83,11 +89,13 @@ def setup_logging() -> None:
 
 
 def check_env() -> None:
+    """校验 OpenAI 兼容 API 必填环境变量。"""
     if not os.getenv("OPENAI_API_KEY") or not os.getenv("OPENAI_BASE_URL"):
         raise EnvConfigError("请在 .env 中配置 OPENAI_API_KEY 和 OPENAI_BASE_URL")
 
 
-def cleanup_index_tmp(base_dir: str | None = None) -> None:
+def cleanup_tmp_dirs(base_dir: str | None = None) -> None:
+    """清理索引构建产生的临时目录。"""
     if base_dir is None:
         base_dir = os.path.dirname(os.path.abspath(INDEX_PATH)) or "."
     for tmp_name in (INDEX_TMP_DIR, LEGACY_TMP_DIR):

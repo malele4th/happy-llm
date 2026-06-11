@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""周报 RAG 统一异常层次。"""
 
 
 class WeeklyReportRagError(Exception):
-    """周报 RAG 基础异常。"""
+    """所有业务异常的基类。"""
 
 
 class EnvConfigError(WeeklyReportRagError):
@@ -20,3 +21,11 @@ class IndexCorruptError(WeeklyReportRagError):
 
 class NoDataError(WeeklyReportRagError):
     """数据目录下没有可索引文件。"""
+
+
+class EmbeddingError(WeeklyReportRagError):
+    """Embedding 请求或结果异常。"""
+
+
+class ApiRequestError(WeeklyReportRagError):
+    """OpenAI 兼容 API 调用失败。"""
