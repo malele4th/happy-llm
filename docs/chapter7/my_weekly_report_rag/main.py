@@ -27,6 +27,13 @@ from utils import resolve_date_filter
 logger = logging.getLogger(__name__)
 
 
+def _valid_month(value: str) -> int:
+    month = int(value)
+    if not 1 <= month <= 12:
+        raise argparse.ArgumentTypeError("月份须在 1-12 之间")
+    return month
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
@@ -45,7 +52,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="检索模式: latest=同项目取最新, timeline=按时间线, compare=按月对比",
     )
     parser.add_argument("--year", type=int, help="按年份过滤检索结果")
-    parser.add_argument("--month", type=int, help="按月份过滤检索结果（需配合 --year）")
+    parser.add_argument("--month", type=_valid_month, help="按月份过滤检索结果（需配合 --year，1-12）")
     parser.add_argument(
         "--auto-date",
         action=argparse.BooleanOptionalAction,
@@ -120,6 +127,10 @@ def main() -> None:
         from web.server import run_server
 
         run_server()
+        return
+
+    if not any([args.build, args.search, args.query, args.chat]):
+        _build_parser().print_help()
         return
 
     setup_logging()

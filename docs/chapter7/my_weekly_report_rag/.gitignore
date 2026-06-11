@@ -3,9 +3,15 @@
 .storage_tmp/
 storage/
 .embedding_cache.sqlite
-data/
+data/*
+!data/.gitkeep
 data.backup/
 log/*.log
 __pycache__/
 *.pyc
 .pytest_cache/
+.venv/
+venv/
+.DS_Store
+*.egg-info/
+.mypy_cache/

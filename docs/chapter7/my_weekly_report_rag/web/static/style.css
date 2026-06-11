@@ -140,6 +140,27 @@ body {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.token-panel .token-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.token-panel input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--sidebar-text);
+  font-size: 12px;
+}
+
+.token-panel input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .chat {
   margin-left: var(--sidebar-width);
   height: 100vh;

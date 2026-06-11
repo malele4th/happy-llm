@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 _query_lock = threading.Lock()
+_API_ERROR_MESSAGE = "问答服务暂时不可用，请稍后重试。"
 
 
 def _local_ip() -> str:
@@ -58,15 +59,15 @@ def create_app() -> FastAPI:
         check_env()
         logger.info("正在加载索引: %s", INDEX_PATH)
         app.state.session = RAGSession(INDEX_PATH)
-        logger.info("索引已加载，共 %s 条 chunk", len(app.state.session.store.records))
+        logger.info("索引已加载，共 %s 条 chunk", app.state.session.store.record_count)
         yield
 
     app = FastAPI(title="周报 RAG", lifespan=lifespan)
 
-    @app.get("/api/health", response_model=HealthOut)
+    @app.get("/api/health", response_model=HealthOut, dependencies=[Depends(_verify_token)])
     def health(request: Request) -> HealthOut:
         session: RAGSession = request.app.state.session
-        return HealthOut(status="ok", chunk_count=len(session.store.records))
+        return HealthOut(status="ok", chunk_count=session.store.record_count)
 
     @app.post("/api/chat", response_model=ChatResponseOut, dependencies=[Depends(_verify_token)])
     async def chat(request: Request, body: ChatRequest) -> ChatResponseOut:
@@ -86,9 +87,9 @@ def create_app() -> FastAPI:
 
         try:
             result = await asyncio.to_thread(_run)
-        except WeeklyReportRagError as exc:
+        except WeeklyReportRagError:
             logger.exception("问答失败")
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            raise HTTPException(status_code=500, detail=_API_ERROR_MESSAGE) from None
 
         return ChatResponseOut.from_response(result)
 
@@ -107,9 +108,13 @@ def run_server(host: str = WEB_HOST, port: int = WEB_PORT) -> None:
     print("\n" + "=" * 52)
     print("  周报 RAG Web 服务已启动")
     print(f"  本机访问:   http://127.0.0.1:{port}")
-    print(f"  局域网访问: http://{lan_ip}:{port}")
+    if host == "0.0.0.0":
+        print(f"  局域网访问: http://{lan_ip}:{port}")
     if WEB_ACCESS_TOKEN:
-        print("  已启用 WEB_ACCESS_TOKEN，请求需携带 Authorization 头")
+        print("  已启用 WEB_ACCESS_TOKEN，请在页面侧边栏填写令牌")
+    elif host == "0.0.0.0":
+        print("  ⚠ 未设置 WEB_ACCESS_TOKEN，局域网用户可直接访问周报内容")
+        print("    建议在 .env 中配置 WEB_ACCESS_TOKEN 后再对外暴露")
     print("=" * 52 + "\n")
 
     uvicorn.run(

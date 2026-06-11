@@ -5,6 +5,7 @@
 from typing import Optional
 
 from config import DEFAULT_AUTO_DATE, DEFAULT_K, INDEX_PATH
+from exceptions import WeeklyReportRagError
 from generation.output import (
     build_numbered_context,
     format_answer_with_citations,
@@ -115,4 +116,7 @@ def interactive_chat(
             print("再见")
             break
 
-        print(f"\n{ask(question, k=k, debug=debug, year=year, month=month, auto_date=auto_date, mode=mode, session=session)}")
+        try:
+            print(f"\n{ask(question, k=k, debug=debug, year=year, month=month, auto_date=auto_date, mode=mode, session=session)}")
+        except WeeklyReportRagError as exc:
+            print(f"\n错误: {exc}")

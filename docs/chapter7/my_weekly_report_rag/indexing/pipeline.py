@@ -8,7 +8,7 @@ from typing import List
 
 from config import INDEX_PATH, REPORT_DATA_PATH
 from exceptions import NoDataError
-from indexing.manifest import compute_index_version, file_hash, load_manifest, save_manifest
+from indexing.manifest import build_manifest, compute_index_version, file_hash, load_manifest
 from indexing.store import IndexStore, load_index
 from models import DocumentChunk
 from parsing.reader import DocxReportReader
@@ -49,7 +49,7 @@ def _incremental_build(reader: DocxReportReader, index_path: str) -> IndexStore:
         record for record in store.records
         if record.metadata.source not in sources_to_remove
     ]
-    store._matrix = None
+    store.invalidate_matrix()
 
     new_chunks: List[DocumentChunk] = []
     for file_path in reader.file_list:
@@ -61,8 +61,7 @@ def _incremental_build(reader: DocxReportReader, index_path: str) -> IndexStore:
         embedding = OpenAIEmbedding()
         store.append_records(new_chunks, _embed_chunks(embedding, new_chunks))
 
-    store.persist(path=index_path)
-    save_manifest(index_path, reader)
+    store.persist(path=index_path, manifest=build_manifest(reader))
 
     reason = "切块/解析规则变更，" if version_changed else ""
     logger.info(
@@ -104,7 +103,6 @@ def build_index(
     store = IndexStore.from_chunks(chunks)
     embedding = OpenAIEmbedding()
     store.set_vectors(_embed_chunks(embedding, chunks))
-    store.persist(path=index_path)
-    save_manifest(index_path, reader)
+    store.persist(path=index_path, manifest=build_manifest(reader))
     logger.info("向量索引已保存到 %s", index_path)
     return store

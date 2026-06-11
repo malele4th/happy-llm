@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""索引 manifest：文件哈希与解析规则版本，用于增量构建。"""
 
 import hashlib
 import json
@@ -34,6 +35,18 @@ def manifest_path(index_path: str) -> str:
     return os.path.join(index_path, MANIFEST_FILE)
 
 
+def build_manifest(reader: DocxReportReader) -> dict:
+    """构建 manifest 字典（与索引一并原子写入）。"""
+    return {
+        "index_version": compute_index_version(),
+        "parser_rules": load_parser_rules(),
+        "files": {
+            os.path.relpath(file_path, reader.data_path): {"hash": file_hash(file_path)}
+            for file_path in reader.file_list
+        },
+    }
+
+
 def load_manifest(index_path: str) -> dict:
     path = manifest_path(index_path)
     if not os.path.exists(path):
@@ -43,13 +56,7 @@ def load_manifest(index_path: str) -> dict:
 
 
 def save_manifest(index_path: str, reader: DocxReportReader) -> None:
-    manifest = {
-        "index_version": compute_index_version(),
-        "parser_rules": load_parser_rules(),
-        "files": {
-            os.path.relpath(file_path, reader.data_path): {"hash": file_hash(file_path)}
-            for file_path in reader.file_list
-        },
-    }
+    """独立写入 manifest（仅用于兼容；构建流程应通过 IndexStore.persist 一并写入）。"""
+    manifest = build_manifest(reader)
     with open(manifest_path(index_path), "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=2)

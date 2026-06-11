@@ -5,6 +5,29 @@ const sendBtn = document.getElementById("send-btn");
 const statusText = document.getElementById("status-text");
 
 const DEFAULT_MODE = "latest";
+const TOKEN_STORAGE_KEY = "rag_access_token";
+const tokenInput = document.getElementById("access-token");
+
+function getAuthHeaders() {
+  const headers = { "Content-Type": "application/json" };
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+if (tokenInput) {
+  tokenInput.value = localStorage.getItem(TOKEN_STORAGE_KEY) || "";
+  tokenInput.addEventListener("change", () => {
+    const value = tokenInput.value.trim();
+    if (value) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, value);
+    } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+  });
+}
 
 function appendMessage(role, html) {
   const wrap = document.createElement("div");
@@ -62,7 +85,7 @@ function renderFilterMeta(data) {
 
 async function checkHealth() {
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch("/api/health", { headers: getAuthHeaders() });
     const data = await res.json();
     statusText.textContent = `已连接 · ${data.chunk_count} 条周报片段`;
   } catch {
@@ -87,7 +110,7 @@ async function sendMessage(text) {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await res.json();

@@ -54,6 +54,10 @@ python main.py --build
 # 局域网用户访问 http://<你的电脑IP>:1203
 ```
 
+Web 页面默认使用 `latest` 检索模式；高级模式（`timeline` / `compare`、年月过滤）请使用 CLI。
+
+**安全提示**：默认监听 `0.0.0.0` 时，局域网用户可直接访问周报内容。对外暴露前请在 `.env` 中设置 `WEB_ACCESS_TOKEN`，并在页面侧边栏填写令牌。
+
 **命令行模式**
 
 ```bash
@@ -121,9 +125,16 @@ my_weekly_report_rag/
 
 ## 测试
 
+需要 Python 3.10+。
+
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## 注意事项
+
+- 索引构建（`--build`）与 Web 服务不要同时运行，避免读写冲突。
+- `data/` 为构建产物，已在 `.gitignore` 中忽略；克隆后需先执行 `--build`。
 
 ## 更多文档
 

@@ -18,7 +18,7 @@ class ChatRequest(BaseModel):
     mode: Literal["latest", "timeline", "compare"] = "latest"
     auto_date: bool = DEFAULT_AUTO_DATE
     year: Optional[int] = None
-    month: Optional[int] = None
+    month: Optional[int] = Field(default=None, ge=1, le=12)
     k: int = Field(default=DEFAULT_K, ge=1, le=20)
 
 
