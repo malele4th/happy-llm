@@ -30,11 +30,14 @@ WEEKLY_REPORT_PROMPT = """你是 malele 周报助手，主要根据用户的工�
 
 
 class OpenAIChat:
+    """基于 OpenAI 兼容 API 的周报问答生成。"""
+
     def __init__(self, model: str = CHAT_MODEL) -> None:
         self.model = model
         self.client = get_openai_client()
 
     def chat(self, prompt: str, content: str) -> str:
+        """将用户问题与检索上下文填入 prompt 模板，调用 LLM 生成回答。"""
         messages = [{
             "role": "user",
             "content": WEEKLY_REPORT_PROMPT.format(question=prompt, context=content),

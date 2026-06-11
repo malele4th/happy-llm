@@ -32,6 +32,7 @@ def _log_qa_exchange(
     filter_month: Optional[int],
     request_info: Optional[dict[str, Any]] = None,
 ) -> None:
+    """将请求元信息、问题与回答写入日志。"""
     meta_parts = [f"来源={source}", f"模式={mode}", f"k={k}"]
     if filter_year is not None:
         meta_parts.append(f"年={filter_year}")
@@ -47,6 +48,7 @@ def _log_qa_exchange(
 
 
 def _get_session(session: Optional[RAGSession], index_path: str) -> RAGSession:
+    """复用已有会话，避免重复加载索引。"""
     return session if session is not None else RAGSession(index_path)
 
 
@@ -66,6 +68,7 @@ def ask_detail(
     active_session = _get_session(session, index_path)
     filter_year, filter_month = resolve_date_filter(question, year, month, auto_date)
 
+    # 1. 混合检索
     results = search(
         question,
         k=k,
@@ -75,6 +78,7 @@ def ask_detail(
         session=active_session,
     )
 
+    # 2. 组装带编号的上下文，调用 LLM 生成回答
     context = build_numbered_context(results) if results else EMPTY_CONTEXT
     answer = active_session.chat.chat(question, context)
     response = ChatResponse(
@@ -143,6 +147,7 @@ def interactive_chat(
     auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
 ) -> None:
+    """CLI 交互式问答循环，每轮独立检索。"""
     session = RAGSession(index_path)
     print("周报 RAG 交互模式（输入 quit 退出，每轮独立检索）")
 

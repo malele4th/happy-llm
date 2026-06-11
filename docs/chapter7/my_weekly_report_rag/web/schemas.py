@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class ChatRequest(BaseModel):
+    """POST /api/chat 请求体。"""
+
     message: str = Field(..., min_length=1, max_length=2000)
     mode: Literal["latest", "timeline", "compare"] = "latest"
     auto_date: bool = DEFAULT_AUTO_DATE
@@ -23,6 +25,8 @@ class ChatRequest(BaseModel):
 
 
 class CitationOut(BaseModel):
+    """单条引用来源的 API 响应格式。"""
+
     index: int
     date: str
     project: str
@@ -32,10 +36,13 @@ class CitationOut(BaseModel):
 
     @classmethod
     def from_citation(cls, citation: Citation) -> "CitationOut":
+        """从领域模型 Citation 转换。"""
         return cls(**citation.__dict__)
 
 
 class ChatResponseOut(BaseModel):
+    """POST /api/chat 响应体。"""
+
     answer: str
     citations: List[CitationOut]
     mode: str
@@ -44,6 +51,7 @@ class ChatResponseOut(BaseModel):
 
     @classmethod
     def from_response(cls, response: "ChatResponse") -> "ChatResponseOut":
+        """从领域模型 ChatResponse 转换。"""
         return cls(
             answer=response.answer,
             citations=[CitationOut.from_citation(c) for c in response.citations],
@@ -54,6 +62,8 @@ class ChatResponseOut(BaseModel):
 
 
 class HealthOut(BaseModel):
+    """GET /api/health 响应体。"""
+
     status: str
     chunk_count: int
     modes: List[str] = list(SEARCH_MODES)

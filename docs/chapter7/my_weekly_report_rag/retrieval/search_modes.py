@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""检索后处理：按模式去重、排序并截取 top-k。"""
 
 from typing import List
 
@@ -8,6 +9,7 @@ from models import SearchMode, SearchResult
 
 
 def dedupe_latest(results: List[SearchResult]) -> List[SearchResult]:
+    """同项目只保留最新周报的一条结果。"""
     by_project: dict[str, SearchResult] = {}
     for result in results:
         project = result.metadata.project
@@ -24,6 +26,7 @@ def dedupe_latest(results: List[SearchResult]) -> List[SearchResult]:
 
 
 def dedupe_compare(results: List[SearchResult]) -> List[SearchResult]:
+    """按月+项目去重，用于跨月对比。"""
     by_key: dict[tuple[str, str], SearchResult] = {}
     for result in results:
         key = result.metadata.compare_key()
@@ -33,6 +36,7 @@ def dedupe_compare(results: List[SearchResult]) -> List[SearchResult]:
 
 
 def apply_search_mode(results: List[SearchResult], mode: SearchMode, k: int) -> List[SearchResult]:
+    """根据检索模式对候选结果做后处理并返回 top-k。"""
     pool_size = max(k * SEARCH_CANDIDATE_POOL_FACTOR, k)
     candidates = results[:pool_size]
     if mode == "timeline":

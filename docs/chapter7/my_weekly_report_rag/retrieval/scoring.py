@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""检索打分：余弦相似度、BM25 及候选合并。"""
 
 import math
 import re
@@ -12,6 +13,7 @@ from models import ChunkMetadata
 
 
 def cosine_similarity(vector1: List[float], vector2: List[float]) -> float:
+    """单对向量余弦相似度，异常值返回 0。"""
     v1 = np.array(vector1, dtype=np.float32)
     v2 = np.array(vector2, dtype=np.float32)
     if not np.all(np.isfinite(v1)) or not np.all(np.isfinite(v2)):
@@ -24,6 +26,7 @@ def cosine_similarity(vector1: List[float], vector2: List[float]) -> float:
 
 
 def batch_cosine_similarity(query_vector: List[float], candidate_vectors) -> np.ndarray:
+    """批量计算 query 与候选向量矩阵的余弦相似度。"""
     if isinstance(candidate_vectors, np.ndarray):
         matrix = candidate_vectors.astype(np.float32)
         if matrix.size == 0:
@@ -60,6 +63,7 @@ def _tokenize(text: str) -> List[str]:
 
 
 def bm25_score(query: str, document: str, corpus_avg_len: float, k1: float = 1.5, b: float = 0.75) -> float:
+    """简化 BM25 打分，面向中英文混合分词。"""
     query_tokens = _tokenize(query)
     if not query_tokens:
         return 0.0
@@ -80,6 +84,7 @@ def bm25_score(query: str, document: str, corpus_avg_len: float, k1: float = 1.5
 
 
 def build_search_text(metadata: ChunkMetadata, body_text: str) -> str:
+    """拼接元数据与正文作为 BM25 检索文本。"""
     return " ".join([
         metadata.project,
         metadata.author,
@@ -94,6 +99,7 @@ def score_candidates(
     texts: Iterable[str],
     metadata_list: Iterable[ChunkMetadata],
 ) -> List[float]:
+    """批量 BM25 打分并归一化到 [0, 1]。"""
     search_docs = [
         build_search_text(meta, text.split("\n", 1)[-1] if text else "")
         for text, meta in zip(texts, metadata_list)
@@ -114,6 +120,7 @@ def merge_candidate_indices(
     keyword_scores: List[float],
     pool_size: int,
 ) -> List[int]:
+    """合并向量路与 BM25 路的 top 候选索引（保序去重）。"""
     vector_top = [index for index, _, _, _ in ranked[:pool_size]]
     keyword_sorted = sorted(
         [(candidate_indices[offset], keyword_scores[offset]) for offset in range(len(candidate_indices))],

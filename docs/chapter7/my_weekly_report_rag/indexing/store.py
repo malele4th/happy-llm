@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_index(index_path: str = INDEX_PATH) -> "IndexStore":
+    """从磁盘加载索引，不存在时抛出 IndexNotFoundError。"""
     if not IndexStore.exists(index_path):
         raise IndexNotFoundError(
             "索引目录不存在或不完整，请先运行: python main.py --build"
@@ -29,6 +30,8 @@ def load_index(index_path: str = INDEX_PATH) -> "IndexStore":
 
 
 class IndexStore:
+    """内存中的索引：文本记录 + 向量矩阵，支持持久化与增量追加。"""
+
     def __init__(self, records: Optional[List[IndexRecord]] = None) -> None:
         self.records: List[IndexRecord] = records or []
         self._matrix: Optional[np.ndarray] = None
@@ -42,6 +45,7 @@ class IndexStore:
 
     @property
     def vector_matrix(self) -> np.ndarray:
+        """惰性构建的向量矩阵，供批量相似度计算。"""
         if self._matrix is not None:
             return self._matrix
         if not self.records:
@@ -51,6 +55,7 @@ class IndexStore:
 
     @classmethod
     def exists(cls, index_path: str) -> bool:
+        """检查索引目录是否包含必要文件。"""
         return (
             os.path.isfile(os.path.join(index_path, "records.json"))
             and os.path.isfile(os.path.join(index_path, "vectors.npy"))
@@ -58,6 +63,7 @@ class IndexStore:
 
     @classmethod
     def from_chunks(cls, chunks: List[DocumentChunk]) -> "IndexStore":
+        """从解析后的 chunk 列表创建空向量索引。"""
         return cls([IndexRecord(text=chunk.text, metadata=chunk.metadata) for chunk in chunks])
 
     def invalidate_matrix(self) -> None:
@@ -65,6 +71,7 @@ class IndexStore:
         self._matrix = None
 
     def set_vectors(self, vectors: List[List[float]]) -> None:
+        """全量设置向量（用于首次构建）。"""
         if len(vectors) != len(self.records):
             raise IndexCorruptError("向量数量与记录数量不一致")
         for record, vector in zip(self.records, vectors):
@@ -72,6 +79,7 @@ class IndexStore:
         self._matrix = np.array(vectors, dtype=np.float32)
 
     def append_records(self, chunks: List[DocumentChunk], vectors: List[List[float]]) -> None:
+        """增量追加 chunk 及其向量。"""
         if len(chunks) != len(vectors):
             raise IndexCorruptError("新增 chunk 与向量数量不一致")
         for chunk, vector in zip(chunks, vectors):
@@ -124,6 +132,7 @@ class IndexStore:
             shutil.rmtree(backup_path, ignore_errors=True)
 
     def load_from_disk(self, path: str = INDEX_PATH) -> None:
+        """从 records.json + vectors.npy 加载索引到内存。"""
         records_path = os.path.join(path, "records.json")
         vectors_path = os.path.join(path, "vectors.npy")
         if not os.path.exists(records_path):

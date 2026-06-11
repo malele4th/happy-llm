@@ -22,17 +22,22 @@ EmbeddingKind = Literal["query", "passage"]
 
 
 class EmbeddingProvider(Protocol):
+    """Embedding 提供方接口，供检索引擎依赖注入。"""
+
     def get_embedding(self, text: str, kind: EmbeddingKind = "passage") -> List[float]: ...
 
     def get_embeddings(self, texts: List[str], kind: EmbeddingKind = "passage") -> List[List[float]]: ...
 
 
 class OpenAIEmbedding:
+    """OpenAI 兼容 API + SQLite 本地缓存的 Embedding 实现。"""
+
     def __init__(self, use_cache: bool = True) -> None:
         self.client = get_openai_client()
         self.cache = EmbeddingCache() if use_cache else None
 
     def _format_text(self, text: str, kind: EmbeddingKind) -> str:
+        """按 BGE 模型要求为 query/passage 添加前缀。"""
         if kind == "query" and BGE_QUERY_PREFIX:
             return f"{BGE_QUERY_PREFIX}{text}"
         if kind == "passage" and BGE_PASSAGE_PREFIX:
@@ -43,6 +48,7 @@ class OpenAIEmbedding:
         return self.get_embeddings([text], kind=kind)[0]
 
     def get_embeddings(self, texts: List[str], kind: EmbeddingKind = "passage") -> List[List[float]]:
+        """批量获取 embedding，优先读缓存，缺失部分调 API。"""
         if not texts:
             return []
 
@@ -75,6 +81,7 @@ class OpenAIEmbedding:
         return results  # type: ignore[return-value]
 
     def _fetch_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """按批次调用 API 获取 embedding。"""
         results: List[List[float]] = []
         for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
             batch = texts[start : start + EMBEDDING_BATCH_SIZE]
@@ -82,6 +89,7 @@ class OpenAIEmbedding:
         return results
 
     def _embed_batch_with_retry(self, batch: List[str]) -> List[List[float]]:
+        """单批次 embedding 请求，失败时指数退避重试。"""
         last_error: Optional[Exception] = None
         for attempt in range(EMBEDDING_MAX_RETRIES):
             try:

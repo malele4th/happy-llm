@@ -36,6 +36,7 @@ _API_ERROR_MESSAGE = "问答服务暂时不可用，请稍后重试。"
 
 
 def _local_ip() -> str:
+    """获取本机局域网 IP，用于启动提示。"""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.connect(("8.8.8.8", 80))
@@ -45,6 +46,7 @@ def _local_ip() -> str:
 
 
 def _verify_token(authorization: Optional[str] = Header(default=None)) -> None:
+    """校验 Bearer Token；未配置 WEB_ACCESS_TOKEN 时跳过。"""
     if not WEB_ACCESS_TOKEN:
         return
     if authorization != f"Bearer {WEB_ACCESS_TOKEN}":
@@ -52,6 +54,8 @@ def _verify_token(authorization: Optional[str] = Header(default=None)) -> None:
 
 
 def create_app() -> FastAPI:
+    """创建 FastAPI 应用：启动时加载索引，注册 API 与静态页面。"""
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         setup_logging()
@@ -81,6 +85,7 @@ def create_app() -> FastAPI:
         }
 
         def _run():
+            # 串行化问答请求，避免并发调用 LLM / embedding API
             with _query_lock:
                 return ask_detail(
                     body.message,
@@ -111,6 +116,7 @@ def create_app() -> FastAPI:
 
 
 def run_server(host: str = WEB_HOST, port: int = WEB_PORT) -> None:
+    """启动 uvicorn 服务并打印访问地址。"""
     import uvicorn
 
     lan_ip = _local_ip()

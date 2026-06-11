@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""长文本按 token 切分，带重叠窗口以保留上下文。"""
 
 from typing import List
 
@@ -11,6 +12,7 @@ enc = tiktoken.get_encoding("cl100k_base")
 
 
 def get_token_cover(text: str, cover_tokens: int) -> str:
+    """取文本末尾若干 token 作为下一块的重叠前缀。"""
     tokens = enc.encode(text)
     if len(tokens) <= cover_tokens:
         return text
@@ -22,6 +24,7 @@ def get_chunk(
     max_token_len: int = MAX_TOKEN_LEN,
     cover_content: int = COVER_CONTENT,
 ) -> List[str]:
+    """将超长文本切分为多个 token 受限的 chunk，相邻块保留重叠。"""
     chunk_text = []
     curr_len = 0
     curr_chunk = ""
@@ -82,4 +85,5 @@ def get_chunk(
 
 
 def count_tokens(text: str) -> int:
+    """统计文本的 cl100k_base token 数。"""
     return len(enc.encode(text))

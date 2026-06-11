@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""docx 周报解析：识别项目标题、切分章节并生成 DocumentChunk。"""
 
 import re
 from typing import List, Optional, Tuple
@@ -19,11 +20,13 @@ from utils import (
 
 
 def is_report_title(line: str, rules: dict) -> bool:
+    """判断是否为周报总标题行（非项目章节）。"""
     keyword = rules.get("report_title_contains", "工作周报")
     return keyword in line and bool(re.search(r"\d{4}", line))
 
 
 def is_heading_style(style_name: Optional[str], rules: dict) -> bool:
+    """根据 Word 样式名判断是否为标题。"""
     if not style_name:
         return False
     keywords = rules.get("heading_style_keywords", [])
@@ -31,6 +34,7 @@ def is_heading_style(style_name: Optional[str], rules: dict) -> bool:
 
 
 def matches_project_hint(line: str) -> bool:
+    """行文本是否包含已知项目名关键词。"""
     lower = line.lower()
     return any(hint.lower() in lower for hint in parser_project_hints())
 
@@ -41,6 +45,7 @@ def is_section_heading(
     style_name: Optional[str] = None,
     rules: Optional[dict] = None,
 ) -> bool:
+    """综合样式、长度、上下文启发式判断是否为项目/章节标题。"""
     rules = rules or load_parser_rules()
     max_len = heading_max_len()
     line = line.strip()
@@ -75,6 +80,7 @@ def is_section_heading(
 
 
 def infer_section_type(body_lines: List[str]) -> str:
+    """根据段落前缀推断章节类型（如 plan、risk、body）。"""
     prefixes_map = section_prefixes()
     for line in body_lines[:5]:
         stripped = line.strip()
@@ -85,6 +91,7 @@ def infer_section_type(body_lines: List[str]) -> str:
 
 
 def build_chunk_text(metadata: ChunkMetadata, body_lines: List[str]) -> str:
+    """组装 chunk 文本：首行 meta 头 + 项目名 + 正文。"""
     header = (
         f"[来源: {metadata.source} | 日期: {format_report_date(metadata.report_date)} | "
         f"项目: {metadata.project} | 季度: {metadata.quarter or '-'} | "
@@ -95,6 +102,7 @@ def build_chunk_text(metadata: ChunkMetadata, body_lines: List[str]) -> str:
 
 
 def split_docx_into_sections(file_path: str) -> List[Tuple[str, List[str]]]:
+    """将 docx 按项目标题切分为 (项目名, 正文行列表) 列表。"""
     rules = load_parser_rules()
     doc = Document(file_path)
     paragraphs: List[Tuple[str, Optional[str]]] = []
@@ -143,6 +151,7 @@ def sections_to_chunks(
     report_date: str,
     sections: List[Tuple[str, List[str]]],
 ) -> List[DocumentChunk]:
+    """将章节列表转为 DocumentChunk，超长章节进一步切分。"""
     chunks: List[DocumentChunk] = []
     author = parse_author_from_path(file_path)
     quarter = parse_quarter_from_path(file_path)

@@ -12,6 +12,7 @@ from parsing.rules import heading_max_len, load_parser_rules
 
 
 def compute_index_version() -> str:
+    """根据切块参数与解析规则生成版本号，规则变更时触发全量重建。"""
     with open(PARSER_RULES_PATH, encoding="utf-8") as handle:
         rules_hash = hashlib.md5(handle.read().encode()).hexdigest()[:8]
     payload = "|".join([
@@ -24,6 +25,7 @@ def compute_index_version() -> str:
 
 
 def file_hash(file_path: str) -> str:
+    """计算文件 MD5，用于增量构建时检测变更。"""
     digest = hashlib.md5()
     with open(file_path, "rb") as handle:
         for chunk in iter(lambda: handle.read(8192), b""):
@@ -32,6 +34,7 @@ def file_hash(file_path: str) -> str:
 
 
 def manifest_path(index_path: str) -> str:
+    """返回 manifest.json 的完整路径。"""
     return os.path.join(index_path, MANIFEST_FILE)
 
 
@@ -48,6 +51,7 @@ def build_manifest(reader: DocxReportReader) -> dict:
 
 
 def load_manifest(index_path: str) -> dict:
+    """读取 manifest，不存在时返回空结构。"""
     path = manifest_path(index_path)
     if not os.path.exists(path):
         return {"files": {}, "index_version": ""}

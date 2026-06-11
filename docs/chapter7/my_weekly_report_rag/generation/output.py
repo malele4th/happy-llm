@@ -14,6 +14,7 @@ def extract_chunk_body(text: str) -> str:
 
 
 def results_to_citations(results: List[SearchResult]) -> List[Citation]:
+    """将检索结果转为 Web/CLI 可用的引用列表。"""
     citations: List[Citation] = []
     for index, result in enumerate(results, 1):
         preview = extract_chunk_body(result.text)[:200].replace("\n", " ")
@@ -35,6 +36,7 @@ def format_result_summary(
     result: SearchResult,
     show_scores: bool = False,
 ) -> str:
+    """单条检索结果的一行摘要。"""
     date = format_report_date(result.metadata.report_date) or "?"
     project = result.metadata.project or "?"
     line = f"[{index}] {date} | {project} | score={result.score:.3f}"
@@ -44,12 +46,14 @@ def format_result_summary(
 
 
 def build_numbered_context(results: List[SearchResult]) -> str:
+    """将检索片段编号拼接为 LLM 上下文。"""
     return "\n\n---\n\n".join(
         f"[{index}]\n{result.text}" for index, result in enumerate(results, 1)
     )
 
 
 def format_citations(results: List[SearchResult]) -> str:
+    """格式化引用来源块，供 CLI 输出。"""
     lines = ["【引用】"]
     for index, result in enumerate(results, 1):
         lines.append(format_result_summary(index, result))
@@ -57,6 +61,7 @@ def format_citations(results: List[SearchResult]) -> str:
 
 
 def format_answer_with_citations(answer: str, results: List[SearchResult]) -> str:
+    """拼接回答正文与引用来源。"""
     return f"【回答】\n{answer}\n\n{format_citations(results)}"
 
 
@@ -65,6 +70,7 @@ def print_search_results(
     verbose: bool = False,
     show_scores: bool = False,
 ) -> None:
+    """CLI 调试：打印检索命中列表。"""
     if not results:
         print("  (未检索到满足相似度阈值的片段)")
         return

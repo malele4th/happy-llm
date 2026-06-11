@@ -24,10 +24,13 @@ RankedItem = Tuple[int, float, float, float]  # index, combined, vector, keyword
 
 
 class SearchEngine:
+    """向量 + BM25 混合检索，支持年月过滤与多种检索模式。"""
+
     def __init__(self, store: IndexStore) -> None:
         self.store = store
 
     def _filter_indices(self, year: Optional[int] = None, month: Optional[int] = None) -> List[int]:
+        """按年月缩小候选集，未指定年份则返回全部索引。"""
         if year is None:
             return list(range(len(self.store.records)))
 
@@ -49,6 +52,7 @@ class SearchEngine:
         candidate_indices: List[int],
         embedding_model: EmbeddingProvider,
     ) -> Tuple[List[RankedItem], List[float]]:
+        """对候选 chunk 分别计算向量相似度与 BM25，加权融合后排序。"""
         query_vector = embedding_model.get_embedding(query, kind="query")
         vector_scores = batch_cosine_similarity(
             query_vector,
@@ -76,7 +80,9 @@ class SearchEngine:
         threshold: float,
         k: int,
     ) -> List[SearchResult]:
+        """合并向量/BM25 两路 top 候选，过滤低于阈值的结果。"""
         pool_size = max(k * SEARCH_CANDIDATE_POOL_FACTOR * 2, k)
+        # 取两路检索的并集，避免单路漏召回
         merged_indices = merge_candidate_indices(ranked, candidate_indices, keyword_scores, pool_size)
         score_map: Dict[int, Tuple[float, float, float]] = {
             index: (combined, vector_score, keyword_score)
@@ -109,6 +115,7 @@ class SearchEngine:
         month: Optional[int] = None,
         mode: SearchMode = DEFAULT_SEARCH_MODE,
     ) -> List[SearchResult]:
+        """检索主流程：过滤 → 打分 → 阈值截断 → 按模式去重/排序。"""
         if not self.store.records:
             return []
 

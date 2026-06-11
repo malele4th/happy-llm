@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""索引构建流水线：全量构建与增量更新。"""
 
 import logging
 import os
@@ -18,15 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 def _embed_chunks(embedding: OpenAIEmbedding, chunks: List[DocumentChunk]) -> List[List[float]]:
+    """批量计算 chunk 的 passage embedding。"""
     if not chunks:
         return []
     return embedding.get_embeddings([chunk.text for chunk in chunks], kind="passage")
 
 
 def _incremental_build(reader: DocxReportReader, index_path: str) -> IndexStore:
+    """对比 manifest，仅重建变更/新增文件的 chunk。"""
     store = load_index(index_path)
     manifest = load_manifest(index_path)
     old_files = manifest.get("files", {})
+    # 解析规则或切块参数变更时，全量重建所有文件
     version_changed = manifest.get("index_version") != compute_index_version()
 
     current_files = {
@@ -79,6 +83,7 @@ def build_index(
     index_path: str = INDEX_PATH,
     force: bool = False,
 ) -> IndexStore:
+    """构建或更新向量索引；已有索引时默认走增量路径。"""
     if not data_path:
         raise NoDataError("请配置 REPORT_DATA_PATH 或使用 --data-path 指定周报目录")
     reader = DocxReportReader(data_path)
@@ -88,6 +93,7 @@ def build_index(
     if os.path.exists(index_path) and not force:
         return _incremental_build(reader, index_path)
 
+    # --force：备份后全量重建
     if force and os.path.exists(index_path):
         backup_path = f"{index_path}.backup"
         if os.path.exists(backup_path):

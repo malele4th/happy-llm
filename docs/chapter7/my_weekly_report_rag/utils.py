@@ -9,11 +9,13 @@ from typing import Optional, Tuple
 
 
 def parse_report_date_from_path(file_path: str) -> str:
+    """从文件名中提取 8 位日期，如 工作周报_20251201.docx。"""
     match = re.search(r"(\d{8})", os.path.basename(file_path))
     return normalize_report_date(match.group(1) if match else "")
 
 
 def parse_report_date_from_text(text: str) -> str:
+    """从正文首行等文本中解析日期（支持 YYYY-MM-DD 或连续 8 位）。"""
     match = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
     if match:
         return normalize_report_date(
@@ -24,6 +26,7 @@ def parse_report_date_from_text(text: str) -> str:
 
 
 def normalize_report_date(report_date: str) -> str:
+    """将各种日期格式统一为 YYYYMMDD，无效则返回空串。"""
     if not report_date:
         return ""
     digits = re.sub(r"\D", "", report_date)
@@ -37,6 +40,7 @@ def normalize_report_date(report_date: str) -> str:
 
 
 def format_report_date(report_date: str) -> str:
+    """将 YYYYMMDD 格式化为 YYYY-MM-DD 供展示。"""
     normalized = normalize_report_date(report_date)
     if len(normalized) == 8:
         return f"{normalized[:4]}-{normalized[4:6]}-{normalized[6:8]}"
@@ -44,6 +48,7 @@ def format_report_date(report_date: str) -> str:
 
 
 def parse_quarter_from_path(file_path: str) -> str:
+    """从目录路径解析季度，如 2025/Q3 → 2025Q3。"""
     normalized = file_path.replace("\\", "/")
     for pattern in (r"(\d{4})/Q([1-4])", r"(\d{4})Q([1-4])"):
         match = re.search(pattern, normalized, re.I)
@@ -53,6 +58,7 @@ def parse_quarter_from_path(file_path: str) -> str:
 
 
 def parse_author_from_path(file_path: str) -> str:
+    """从文件名解析作者，如 工作周报-张三.docx。"""
     basename = os.path.basename(file_path)
     match = re.search(r"工作周报[-_]?(.+?)\.docx$", basename)
     return match.group(1).strip() if match else ""

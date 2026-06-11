@@ -11,6 +11,7 @@ _client: Optional[OpenAI] = None
 
 
 def get_openai_client() -> OpenAI:
+    """返回全局单例 OpenAI 客户端，避免重复初始化。"""
     global _client
     if _client is None:
         _client = OpenAI(

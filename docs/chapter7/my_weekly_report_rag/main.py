@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 def _valid_month(value: str) -> int:
+    """argparse 类型校验：月份须在 1-12。"""
     month = int(value)
     if not 1 <= month <= 12:
         raise argparse.ArgumentTypeError("月份须在 1-12 之间")
@@ -35,6 +36,7 @@ def _valid_month(value: str) -> int:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    """构建 CLI 参数解析器。"""
     parser = argparse.ArgumentParser(description="周报 RAG 系统")
     parser.add_argument("--build", action="store_true", help="构建或增量更新向量索引")
     parser.add_argument("--force", action="store_true", help="强制全量重建索引（覆盖已有 data 目录）")
@@ -65,6 +67,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _run_search(args: Namespace) -> None:
+    """仅检索模式：不调用 LLM，直接打印命中片段。"""
     filter_year, filter_month = resolve_date_filter(
         args.search, args.year, args.month, args.auto_date
     )
@@ -83,6 +86,7 @@ def _run_search(args: Namespace) -> None:
 
 
 def _run_query(args: Namespace) -> None:
+    """单次问答模式。"""
     session = RAGSession(args.index)
     print(
         ask(
@@ -100,6 +104,7 @@ def _run_query(args: Namespace) -> None:
 
 
 def _dispatch(args: Namespace) -> None:
+    """根据 CLI 子命令分发到对应处理函数。"""
     if args.build:
         build_index(args.data_path, args.index, force=args.force)
     elif args.search:
@@ -123,6 +128,7 @@ def _dispatch(args: Namespace) -> None:
 def main() -> None:
     args = _build_parser().parse_args()
 
+    # Web 模式由 uvicorn 管理生命周期，单独启动
     if args.web:
         from web.server import run_server
 
