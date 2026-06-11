@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """问答编排：检索 → LLM 生成 → 格式化输出。"""
 
-from typing import Optional
+import logging
+from typing import Any, Optional
 
 from config import DEFAULT_AUTO_DATE, DEFAULT_K, INDEX_PATH
 from exceptions import WeeklyReportRagError
@@ -16,6 +17,33 @@ from generation.output import (
 from models import DEFAULT_SEARCH_MODE, ChatResponse, SearchMode
 from retrieval.session import RAGSession, search
 from utils import format_filter_desc, resolve_date_filter
+
+logger = logging.getLogger(__name__)
+
+
+def _log_qa_exchange(
+    question: str,
+    answer: str,
+    *,
+    source: str,
+    mode: SearchMode,
+    k: int,
+    filter_year: Optional[int],
+    filter_month: Optional[int],
+    request_info: Optional[dict[str, Any]] = None,
+) -> None:
+    meta_parts = [f"来源={source}", f"模式={mode}", f"k={k}"]
+    if filter_year is not None:
+        meta_parts.append(f"年={filter_year}")
+    if filter_month is not None:
+        meta_parts.append(f"月={filter_month}")
+    if request_info:
+        for key, value in request_info.items():
+            if value is not None and value != "":
+                meta_parts.append(f"{key}={value}")
+    logger.info("问答请求 [%s]", ", ".join(meta_parts))
+    logger.info("用户问题: %s", question)
+    logger.info("回答内容: %s", answer)
 
 
 def _get_session(session: Optional[RAGSession], index_path: str) -> RAGSession:
@@ -31,6 +59,8 @@ def ask_detail(
     auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
+    source: str = "cli",
+    request_info: Optional[dict[str, Any]] = None,
 ) -> ChatResponse:
     """核心问答流程，返回结构化结果（Web / CLI 共用）。"""
     active_session = _get_session(session, index_path)
@@ -47,7 +77,7 @@ def ask_detail(
 
     context = build_numbered_context(results) if results else EMPTY_CONTEXT
     answer = active_session.chat.chat(question, context)
-    return ChatResponse(
+    response = ChatResponse(
         answer=answer,
         citations=results_to_citations(results) if results else [],
         mode=mode,
@@ -55,6 +85,17 @@ def ask_detail(
         filter_month=filter_month,
         search_results=results,
     )
+    _log_qa_exchange(
+        question,
+        answer,
+        source=source,
+        mode=mode,
+        k=k,
+        filter_year=filter_year,
+        filter_month=filter_month,
+        request_info=request_info,
+    )
+    return response
 
 
 def ask(
@@ -67,6 +108,7 @@ def ask(
     auto_date: bool = DEFAULT_AUTO_DATE,
     mode: SearchMode = DEFAULT_SEARCH_MODE,
     session: Optional[RAGSession] = None,
+    source: str = "cli",
 ) -> str:
     """CLI 问答，返回带引用的纯文本。"""
     detail = ask_detail(
@@ -78,6 +120,7 @@ def ask(
         auto_date=auto_date,
         mode=mode,
         session=session,
+        source=source,
     )
 
     if debug:
@@ -116,6 +159,8 @@ def interactive_chat(
             break
 
         try:
-            print(f"\n{ask(question, k=k, debug=debug, year=year, month=month, auto_date=auto_date, mode=mode, session=session)}")
+            print(
+                f"\n{ask(question, k=k, debug=debug, year=year, month=month, auto_date=auto_date, mode=mode, session=session, source='cli-interactive')}"
+            )
         except WeeklyReportRagError as exc:
             print(f"\n错误: {exc}")

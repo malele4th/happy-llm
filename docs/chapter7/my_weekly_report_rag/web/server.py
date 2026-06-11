@@ -73,6 +73,13 @@ def create_app() -> FastAPI:
     async def chat(request: Request, body: ChatRequest) -> ChatResponseOut:
         session: RAGSession = request.app.state.session
 
+        client = request.client
+        request_info = {
+            "client_ip": client.host if client else "unknown",
+            "user_agent": request.headers.get("user-agent", ""),
+            "auto_date": body.auto_date,
+        }
+
         def _run():
             with _query_lock:
                 return ask_detail(
@@ -83,6 +90,8 @@ def create_app() -> FastAPI:
                     auto_date=body.auto_date,
                     mode=body.mode,
                     session=session,
+                    source="web",
+                    request_info=request_info,
                 )
 
         try:
