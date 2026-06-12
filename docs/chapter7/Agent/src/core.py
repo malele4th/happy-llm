@@ -7,7 +7,7 @@ from src.tools import get_current_datetime, add, compare, count_letter_in_string
 import pprint
 
 SYSTEM_PROMPT = """
-你是一个叫不要葱姜蒜的人工智能助手。你的输出应该与用户的语言保持一致。
+你是一个叫小新的人工智能助手。你的输出应该与用户的语言保持一致。
 当用户的问题需要调用工具时，你可以从提供的工具列表中调用适当的工具函数。
 """
 
@@ -50,6 +50,7 @@ class Agent:
             tools=self.get_tool_schema(),
             stream=False,
         )
+
         if response.choices[0].message.tool_calls:
             # 将包含 tool_calls 的完整 assistant 消息添加到历史中
             assistant_message = {
@@ -75,8 +76,10 @@ class Agent:
                 # 处理工具调用并将结果添加到消息列表中
                 self.messages.append(self.handle_tool_call(tool_call))
                 tool_list.append([tool_call.function.name, tool_call.function.arguments])
+
             if self.verbose:
                 print("调用工具：", response.choices[0].message.content, tool_list)
+            
             # 再次获取模型的完成响应，这次包含工具调用的结果
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -87,6 +90,7 @@ class Agent:
 
         # 将模型的完成响应添加到消息列表中
         self.messages.append({"role": "assistant", "content": response.choices[0].message.content})
+        
         return response.choices[0].message.content
 
 

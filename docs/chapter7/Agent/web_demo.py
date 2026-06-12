@@ -5,7 +5,7 @@ from openai import OpenAI
 
 # --- 页面配置 ---
 st.set_page_config(
-    page_title="Tiny Agent Demo",  # 页面标题
+    page_title="Happy Agent",  # 页面标题
     page_icon="🤖",  # 页面图标
     layout="centered",  # 页面布局
     initial_sidebar_state="auto",  # 侧边栏初始状态
@@ -30,8 +30,8 @@ def load_agent():
 agent = load_agent()  # 加载Agent
 
 # --- UI组件 ---
-st.title("🤖 Happy-LLM Tiny Agent")  # 设置页面标题
-st.markdown("""欢迎来到 Tiny Agent web 界面！
+st.title("🤖 Happy Agent")  # 设置页面标题
+st.markdown("""欢迎来到 Happy Agent web 界面！
 
 在下方输入您的提示，查看 Agent 的实际操作。
 """)  # 显示Markdown格式的欢迎信息
@@ -49,6 +49,7 @@ for message in st.session_state.messages:
 if prompt := st.chat_input("我能为您做些什么？"):
     # 在聊天消息容器中显示用户消息
     st.chat_message("user").markdown(prompt)
+
     # 将用户消息添加到聊天记录中
     st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -58,5 +59,6 @@ if prompt := st.chat_input("我能为您做些什么？"):
     # 在聊天消息容器中显示助手响应
     with st.chat_message("assistant"):
         st.markdown(response)
+
     # 将助手响应添加到聊天记录中
     st.session_state.messages.append({"role": "assistant", "content": response})
