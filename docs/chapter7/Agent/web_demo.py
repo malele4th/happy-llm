@@ -13,7 +13,7 @@ st.set_page_config(
 
 # --- OpenAI客户端初始化 ---
 client = OpenAI(
-    api_key="your siliconflow api key",
+    api_key="sk-iecumxysholslzyneqegaqsuzeyneiliddjvdksuycupmcfy",
     base_url="https://api.siliconflow.cn/v1",  
 )
 
