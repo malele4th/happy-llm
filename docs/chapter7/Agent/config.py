@@ -6,7 +6,7 @@ from dotenv import find_dotenv, load_dotenv
 from openai import OpenAI
 
 from src.core import Agent
-from src.tools import get_current_datetime, get_current_temperature, search_wikipedia
+from src.tools import count_letter_in_string, get_current_datetime, get_current_temperature, search_wikipedia
 
 load_dotenv(find_dotenv())
 
@@ -14,7 +14,7 @@ API_KEY = os.getenv("OPENAI_API_KEY", "")
 BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.siliconflow.cn/v1")
 MODEL = os.getenv("CHAT_MODEL", "Qwen/Qwen2.5-32B-Instruct")
 
-DEFAULT_TOOLS = [get_current_datetime, search_wikipedia, get_current_temperature]
+DEFAULT_TOOLS = [count_letter_in_string,get_current_datetime, get_current_temperature, search_wikipedia]
 
 
 def create_client() -> OpenAI:

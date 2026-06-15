@@ -5,50 +5,6 @@ import wikipedia
 
 REQUEST_TIMEOUT = 10
 
-
-def get_current_datetime() -> str:
-    """
-    获取真实的当前日期和时间。
-    :return: 当前日期和时间的字符串表示。
-    """
-    current_datetime = datetime.datetime.now()
-    return current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def add(a: float, b: float) -> str:
-    """
-    计算两个浮点数的和。
-    :param a: 第一个浮点数。
-    :param b: 第二个浮点数。
-    :return: 两个浮点数的和。
-    """
-    return str(a + b)
-
-
-def mul(a: float, b: float) -> str:
-    """
-    计算两个浮点数的积。
-    :param a: 第一个浮点数。
-    :param b: 第二个浮点数。
-    :return: 两个浮点数的积。
-    """
-    return str(a * b)
-
-
-def compare(a: float, b: float) -> str:
-    """
-    比较两个浮点数的大小。
-    :param a: 第一个浮点数。
-    :param b: 第二个浮点数。
-    :return: 比较结果的字符串表示。
-    """
-    if a > b:
-        return f"{a} is greater than {b}"
-    if a < b:
-        return f"{b} is greater than {a}"
-    return f"{a} is equal to {b}"
-
-
 def count_letter_in_string(a: str, b: str) -> str:
     """
     统计字符串中某个字母的出现次数。
@@ -62,33 +18,13 @@ def count_letter_in_string(a: str, b: str) -> str:
     return f"The letter '{letter}' appears {count} times in the string."
 
 
-def search_wikipedia(query: str) -> str:
+def get_current_datetime() -> str:
     """
-    在维基百科中搜索指定查询的前三个页面摘要。
-    :param query: 要搜索的查询字符串。
-    :return: 包含前三个页面摘要的字符串。
+    获取真实的当前日期和时间。
+    :return: 当前日期和时间的字符串表示。
     """
-    try:
-        page_titles = wikipedia.search(query)
-    except Exception as e:
-        return f"维基百科搜索失败: {e}"
-
-    summaries = []
-    skipped = []
-    for page_title in page_titles[:3]:
-        try:
-            wiki_page = wikipedia.page(title=page_title, auto_suggest=False)
-            summaries.append(f"页面: {page_title}\n摘要: {wiki_page.summary}")
-        except (
-            wikipedia.exceptions.PageError,
-            wikipedia.exceptions.DisambiguationError,
-        ) as e:
-            skipped.append(f"{page_title}({e})")
-
-    if not summaries:
-        detail = "; ".join(skipped) if skipped else "无匹配页面"
-        return f"维基百科没有搜索到合适的结果（{detail}）"
-    return "\n\n".join(summaries)
+    current_datetime = datetime.datetime.now()
+    return current_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_current_temperature(latitude: float, longitude: float) -> str:
@@ -123,3 +59,34 @@ def get_current_temperature(latitude: float, longitude: float) -> str:
     )
     current_temperature = temperature_list[closest_time_index]
     return f"现在温度是 {current_temperature}°C"
+
+
+def search_wikipedia(query: str) -> str:
+    """
+    在维基百科中搜索指定查询的前三个页面摘要。
+    :param query: 要搜索的查询字符串。
+    :return: 包含前三个页面摘要的字符串。
+    """
+    try:
+        page_titles = wikipedia.search(query)
+    except Exception as e:
+        return f"维基百科搜索失败: {e}"
+
+    summaries = []
+    skipped = []
+    for page_title in page_titles[:3]:
+        try:
+            wiki_page = wikipedia.page(title=page_title, auto_suggest=False)
+            summaries.append(f"页面: {page_title}\n摘要: {wiki_page.summary}")
+        except (
+            wikipedia.exceptions.PageError,
+            wikipedia.exceptions.DisambiguationError,
+        ) as e:
+            skipped.append(f"{page_title}({e})")
+
+    if not summaries:
+        detail = "; ".join(skipped) if skipped else "无匹配页面"
+        return f"维基百科没有搜索到合适的结果（{detail}）"
+    return "\n\n".join(summaries)
+
+

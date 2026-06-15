@@ -57,13 +57,19 @@ class Agent:
         """处理一轮用户输入，必要时调用工具后返回最终文本。"""
         self.messages.append({"role": "user", "content": prompt})
 
+        print("\n\n--------------------------------")
+        print(f"[Agent] 第一次请求：{self.messages}")
+
         # 第一次请求：LLM 决定直接回答或发起 tool_calls
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self.messages,
-            tools=self._tool_schema,
+            tools=self._tool_schema,  # 工具 JSON Schema, 告诉模型能调哪些函数、参数是什么
             stream=False,
         )
+
+        print(f"[Agent] 第一次请求响应 [工具调用]：{response.choices[0].message.tool_calls}")
+        print(f"[Agent] 第一次请求响应 [内容]：{response.choices[0].message.content}")
 
         if response.choices[0].message.tool_calls:
             # 须先写入带 tool_calls 的 assistant 消息，再追加各 tool 结果
@@ -78,29 +84,37 @@ class Agent:
                             "name": tool_call.function.name,
                             "arguments": tool_call.function.arguments,
                         },
-                    }
-                    for tool_call in response.choices[0].message.tool_calls
+                    } for tool_call in response.choices[0].message.tool_calls
                 ],
             }
             self.messages.append(assistant_message)
 
+            print(f"[Agent] 第一次请求响应 [助手消息]：{assistant_message}")
+
             tool_list = []
             for tool_call in response.choices[0].message.tool_calls:
-                self.messages.append(self.handle_tool_call(tool_call))
-                tool_list.append([tool_call.function.name, tool_call.function.arguments])
+                tool_message = self.handle_tool_call(tool_call)
+                self.messages.append(tool_message)
+                print(f"[Agent] 第一次请求响应 [工具消息] {tool_call.function.name}：{tool_message}")
 
-            if self.verbose:
-                print("调用工具：", response.choices[0].message.content, tool_list)
+                tool_list.append([tool_call.function.name, tool_call.function.arguments])
+            
+            print(f"[Agent] 第一次请求响应 [工具列表]：{tool_list}")
 
             # 第二次请求：LLM 根据工具结果生成最终回答
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=self.messages,
-                tools=self._tool_schema,
+                # tools=self._tool_schema, # 不再传入工具 schema，因为工具已经调用过了
                 stream=False,
             )
 
+        # 第二次请求响应 [最终回答]
         self.messages.append(
             {"role": "assistant", "content": response.choices[0].message.content}
         )
+        print(f"[Agent] 第二次请求响应 [最终回答]：{response.choices[0].message.content}")
+        
+        print("--------------------------------\n\n")
+
         return response.choices[0].message.content
