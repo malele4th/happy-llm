@@ -1,3 +1,5 @@
+"""Agent 核心：维护对话历史，编排 LLM 与工具调用。"""
+
 import json
 from collections.abc import Callable
 from typing import Any
@@ -22,16 +24,20 @@ class Agent:
     ):
         self.client = client
         self.tools = list(tools or [])
+        # 函数名 -> 可调用对象，用于安全分发工具调用（避免 eval）
         self._tool_registry = {tool.__name__: tool for tool in self.tools}
         self.model = model
+        # 发给 LLM 的完整对话历史（含 system / user / assistant / tool）
         self.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         self.verbose = verbose
+        # 工具 JSON Schema，初始化时生成一次，传给 LLM 的 tools 参数
         self._tool_schema = [function_to_json(tool) for tool in self.tools]
 
     def get_tool_schema(self) -> list[dict[str, Any]]:
         return self._tool_schema
 
     def handle_tool_call(self, tool_call) -> dict[str, str]:
+        """执行单次工具调用，返回符合 OpenAI 格式的 tool 消息。"""
         function_name = tool_call.function.name
         function_args = json.loads(tool_call.function.arguments)
         function_id = tool_call.id
@@ -43,13 +49,15 @@ class Agent:
 
         return {
             "role": "tool",
-            "content": str(result),
+            "content": str(result),  # API 要求 content 为字符串
             "tool_call_id": function_id,
         }
 
     def get_completion(self, prompt: str) -> str:
+        """处理一轮用户输入，必要时调用工具后返回最终文本。"""
         self.messages.append({"role": "user", "content": prompt})
 
+        # 第一次请求：LLM 决定直接回答或发起 tool_calls
         response = self.client.chat.completions.create(
             model=self.model,
             messages=self.messages,
@@ -58,6 +66,7 @@ class Agent:
         )
 
         if response.choices[0].message.tool_calls:
+            # 须先写入带 tool_calls 的 assistant 消息，再追加各 tool 结果
             assistant_message = {
                 "role": "assistant",
                 "content": response.choices[0].message.content,
@@ -83,6 +92,7 @@ class Agent:
             if self.verbose:
                 print("调用工具：", response.choices[0].message.content, tool_list)
 
+            # 第二次请求：LLM 根据工具结果生成最终回答
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=self.messages,
