@@ -109,11 +109,11 @@ class Agent:
                 stream=False,
             )
 
-        # 第二次请求响应 [最终回答]
+        # [最终回答]
         self.messages.append(
             {"role": "assistant", "content": response.choices[0].message.content}
         )
-        print(f"[Agent] 第二次请求响应 [最终回答]：{response.choices[0].message.content}")
+        print(f"[Agent] [最终回答]：{response.choices[0].message.content}")
         
         print("--------------------------------\n\n")
 
